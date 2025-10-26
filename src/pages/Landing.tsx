@@ -196,7 +196,7 @@ const Landing = () => {
             </div>
             
             <h1 className="text-5xl md:text-7xl font-bold text-balance leading-tight">
-              Turn <span className="gradient-hero bg-clip-text text-transparent">Trends</span> Into
+              Turn <span className="gradient-text">Trends</span> Into
               <br />
               Brand-Ready Content
             </h1>
@@ -275,7 +275,7 @@ const Landing = () => {
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
                   {stat.icon}
                 </div>
-                <div className="text-4xl font-bold mb-2 gradient-hero bg-clip-text text-transparent">{stat.value}</div>
+                <div className="text-4xl font-bold mb-2 gradient-text">{stat.value}</div>
                 <div className="text-muted-foreground text-sm">{stat.label}</div>
               </Card>
             ))}
