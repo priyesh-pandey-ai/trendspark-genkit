@@ -13,28 +13,32 @@ const Landing = () => {
       category: "Technology",
       growth: "+127%",
       engagement: "High",
-      color: "bg-blue-500"
+      color: "#3b82f6",
+      dotColor: "bg-blue-500"
     },
     {
       title: "Sustainable Fashion",
       category: "Lifestyle",
       growth: "+89%",
       engagement: "Medium",
-      color: "bg-green-500"
+      color: "#22c55e",
+      dotColor: "bg-green-500"
     },
     {
       title: "Remote Work Tools",
       category: "Business",
       growth: "+156%",
       engagement: "High",
-      color: "bg-purple-500"
+      color: "#a855f7",
+      dotColor: "bg-purple-500"
     },
     {
       title: "Wellness Tech",
       category: "Health",
       growth: "+94%",
       engagement: "Medium",
-      color: "bg-pink-500"
+      color: "#ec4899",
+      dotColor: "bg-pink-500"
     }
   ];
 
@@ -236,10 +240,10 @@ const Landing = () => {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {trendingTopics.map((topic, i) => (
-              <Card key={i} className="p-6 hover:shadow-lg transition-all duration-300 border-l-4 hover:scale-105" style={{ borderLeftColor: topic.color.replace('bg-', '#') }}>
+              <Card key={i} className="p-6 hover:shadow-lg transition-all duration-300 border-l-4 hover:scale-105" style={{ borderLeftColor: topic.color }}>
                 <div className="flex items-start justify-between mb-4">
                   <Badge variant="outline" className="text-xs">{topic.category}</Badge>
-                  <div className={`h-2 w-2 rounded-full ${topic.color} animate-pulse`}></div>
+                  <div className={`h-2 w-2 rounded-full ${topic.dotColor} animate-pulse`}></div>
                 </div>
                 <h3 className="font-bold text-lg mb-3">{topic.title}</h3>
                 <div className="flex items-center justify-between text-sm">
