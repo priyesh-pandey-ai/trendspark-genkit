@@ -17,7 +17,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell
 } from 'recharts';
@@ -132,7 +131,11 @@ const Analytics = () => {
       const date = format(new Date(kit.created_at), 'MMM dd');
       dailyCounts[date] = (dailyCounts[date] || 0) + 1;
     });
-    const dailyData = Object.entries(dailyCounts).map(([date, count]) => ({ date, count }));
+    // Sort daily data chronologically
+    const dailyData = Object.entries(dailyCounts)
+      .map(([date, count]) => ({ date, count, timestamp: new Date(date + ', ' + new Date().getFullYear()) }))
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+      .map(({ date, count }) => ({ date, count }));
 
     // Platform data for pie chart
     const platformColors: Record<string, string> = {

@@ -52,17 +52,29 @@ const BrandDetail = () => {
   };
 
   const fetchQuickStats = async () => {
-    const { data, error } = await supabase
+    // Get total count
+    const { count: totalCount, error: totalError } = await supabase
       .from('content_kits')
-      .select('created_at')
+      .select('*', { count: 'exact', head: true })
       .eq('brand_id', id);
     
-    if (!error && data) {
-      const total = data.length;
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const thisWeek = data.filter(k => new Date(k.created_at) >= sevenDaysAgo).length;
-      setQuickStats({ total, thisWeek });
+    if (totalError) return;
+
+    // Get this week's count
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const { count: weekCount, error: weekError } = await supabase
+      .from('content_kits')
+      .select('*', { count: 'exact', head: true })
+      .eq('brand_id', id)
+      .gte('created_at', sevenDaysAgo.toISOString());
+    
+    if (!weekError) {
+      setQuickStats({ 
+        total: totalCount || 0, 
+        thisWeek: weekCount || 0 
+      });
     }
   };
 
