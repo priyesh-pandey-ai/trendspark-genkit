@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Plus, LogOut, Zap, Library } from "lucide-react";
+import { Sparkles, Plus, LogOut, Zap, Library, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Brand {
@@ -160,14 +160,43 @@ const Dashboard = () => {
               {brands.map((brand) => (
                 <Card 
                   key={brand.id} 
-                  className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => navigate(`/brand/${brand.id}`)}
+                  className="p-6 hover:shadow-lg transition-shadow"
                 >
-                  <h4 className="font-semibold text-lg mb-2">{brand.name}</h4>
-                  <p className="text-sm text-muted-foreground mb-4">{brand.niche || 'No niche specified'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Created {new Date(brand.created_at).toLocaleDateString()}
-                  </p>
+                  <div className="cursor-pointer" onClick={() => navigate(`/brand/${brand.id}`)}>
+                    <h4 className="font-semibold text-lg mb-2">{brand.name}</h4>
+                    <p className="text-sm text-muted-foreground mb-4">{brand.niche || 'No niche specified'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Created {new Date(brand.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  
+                  {/* Add analytics button */}
+                  <div className="mt-4 flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/analytics/${brand.id}`);
+                      }}
+                    >
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Analytics
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/generate', { state: { brandId: brand.id } });
+                      }}
+                    >
+                      <Zap className="h-4 w-4 mr-2" />
+                      Generate
+                    </Button>
+                  </div>
                 </Card>
               ))}
             </div>

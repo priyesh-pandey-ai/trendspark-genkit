@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Sparkles, FileText } from "lucide-react";
+import { ArrowLeft, Sparkles, FileText, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 
@@ -19,11 +19,14 @@ const BrandDetail = () => {
   const { id } = useParams();
   const [brand, setBrand] = useState<Brand | null>(null);
   const [loading, setLoading] = useState(true);
+  const [quickStats, setQuickStats] = useState({ total: 0, thisWeek: 0 });
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     fetchBrand();
+    fetchQuickStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchBrand = async () => {
@@ -45,6 +48,21 @@ const BrandDetail = () => {
       navigate('/dashboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchQuickStats = async () => {
+    const { data, error } = await supabase
+      .from('content_kits')
+      .select('created_at')
+      .eq('brand_id', id);
+    
+    if (!error && data) {
+      const total = data.length;
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const thisWeek = data.filter(k => new Date(k.created_at) >= sevenDaysAgo).length;
+      setQuickStats({ total, thisWeek });
     }
   };
 
@@ -106,6 +124,32 @@ const BrandDetail = () => {
               })}
             </p>
           </div>
+        </Card>
+
+        <Card className="p-6 gradient-card shadow-lg mt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="h-6 w-6 text-primary" />
+            <h3 className="font-semibold text-lg">Quick Stats</h3>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <div className="text-3xl font-bold text-primary">{quickStats.total}</div>
+              <div className="text-sm text-muted-foreground">Total Posts</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-green-500">{quickStats.thisWeek}</div>
+              <div className="text-sm text-muted-foreground">This Week</div>
+            </div>
+          </div>
+          
+          <Button 
+            onClick={() => navigate(`/analytics/${brand.id}`)} 
+            className="w-full gradient-hero text-white"
+          >
+            <BarChart3 className="h-4 w-4 mr-2" />
+            View Full Analytics
+          </Button>
         </Card>
       </main>
     </div>
