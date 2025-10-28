@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Sparkles, Copy, Download } from "lucide-react";
+import { ArrowLeft, Sparkles, Copy, Download, Library } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import PostPreview from "@/components/PostPreview";
 
 interface Brand {
   id: string;
@@ -189,10 +190,14 @@ const Generate = () => {
   return (
     <div className="min-h-screen gradient-subtle">
       <header className="border-b bg-background/80 backdrop-blur-sm">
-        <div className="container max-w-7xl mx-auto px-4 py-4">
+        <div className="container max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate('/content-library')}>
+            <Library className="h-4 w-4 mr-2" />
+            Content Library
           </Button>
         </div>
       </header>
@@ -283,41 +288,51 @@ const Generate = () => {
             )}
 
             {contentKits.map((kit, i) => (
-              <Card key={i} className="p-6 shadow-md">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-lg">{kit.platform}</h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopy(kit)}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy
-                  </Button>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Hook</p>
-                    <p className="font-medium">{kit.hook}</p>
+              <div key={i} className="space-y-4">
+                <Card className="p-6 shadow-md">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-lg">{kit.platform}</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCopy(kit)}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy
+                    </Button>
                   </div>
 
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Body</p>
-                    <p className="text-sm whitespace-pre-wrap">{kit.body}</p>
-                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Hook</p>
+                      <p className="font-medium">{kit.hook}</p>
+                    </div>
 
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">CTA</p>
-                    <p className="text-sm font-medium text-primary">{kit.cta}</p>
-                  </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Body</p>
+                      <p className="text-sm whitespace-pre-wrap">{kit.body}</p>
+                    </div>
 
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Hashtags</p>
-                    <p className="text-sm text-secondary">{kit.hashtags.join(' ')}</p>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">CTA</p>
+                      <p className="text-sm font-medium text-primary">{kit.cta}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground mb-1">Hashtags</p>
+                      <p className="text-sm text-secondary">{kit.hashtags.join(' ')}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+
+                <PostPreview
+                  platform={kit.platform}
+                  hook={kit.hook}
+                  body={kit.body}
+                  cta={kit.cta}
+                  hashtags={kit.hashtags}
+                />
+              </div>
             ))}
 
             {contentKits.length === 0 && !loading && (

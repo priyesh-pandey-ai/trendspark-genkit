@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Plus, LogOut, Zap } from "lucide-react";
+import { Sparkles, Plus, LogOut, Zap, Library } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Brand {
@@ -80,7 +80,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
           <Card className="p-6 gradient-card border-primary/10 hover:shadow-lg transition-shadow cursor-pointer"
                 onClick={() => navigate('/create-brand')}>
             <div className="flex items-start gap-4">
@@ -116,6 +116,21 @@ const Dashboard = () => {
                 <h3 className="font-semibold text-lg mb-2">Generate Content</h3>
                 <p className="text-sm text-muted-foreground">
                   Create platform-optimized posts from trending topics
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6 gradient-card border-accent/10 hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => navigate('/content-library')}>
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-lg bg-accent/10">
+                <Library className="h-6 w-6 text-accent" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-2">Content Library</h3>
+                <p className="text-sm text-muted-foreground">
+                  View and manage all your generated content
                 </p>
               </div>
             </div>

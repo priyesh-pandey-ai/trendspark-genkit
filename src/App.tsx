@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import CreateBrand from "./pages/CreateBrand";
 import BrandDetail from "./pages/BrandDetail";
 import Generate from "./pages/Generate";
+import ContentLibrary from "./pages/ContentLibrary";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/create-brand" element={<CreateBrand />} />
           <Route path="/brand/:id" element={<BrandDetail />} />
           <Route path="/generate" element={<Generate />} />
+          <Route path="/content-library" element={<ContentLibrary />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
