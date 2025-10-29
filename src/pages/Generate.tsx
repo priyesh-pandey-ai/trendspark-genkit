@@ -188,7 +188,7 @@ const Generate = () => {
         // Save to database with images
         const kitsToInsert = kitsWithImages.map((kit: ContentKit) => ({
           brand_id: selectedBrand,
-          trend_title: trendTitle,
+          trend_title: sanitizedTrendTitle,
           platform: kit.platform,
           hook: kit.hook,
           body: kit.body,
@@ -208,7 +208,7 @@ const Generate = () => {
         // Save to database without images
         const kitsToInsert = data.contentKits.map((kit: ContentKit) => ({
           brand_id: selectedBrand,
-          trend_title: trendTitle,
+          trend_title: sanitizedTrendTitle,
           platform: kit.platform,
           hook: kit.hook,
           body: kit.body,

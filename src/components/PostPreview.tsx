@@ -88,7 +88,7 @@ const PostPreview = ({ platform, hook, body, cta, hashtags, imageUrl }: PostPrev
       </div>
       {imageUrl && (
         <div className="mb-4">
-          <img src={imageUrl} alt="Post visual" className="w-full rounded-lg object-cover" style={{ maxHeight: '400px' }} />
+          <img src={imageUrl} alt={`${platform} post image for: ${hook.substring(0, 50)}...`} className="w-full rounded-lg object-cover" style={{ maxHeight: '400px' }} />
         </div>
       )}
       <div className="space-y-3">
@@ -116,7 +116,7 @@ const PostPreview = ({ platform, hook, body, cta, hashtags, imageUrl }: PostPrev
         <p className="text-sm whitespace-pre-wrap leading-relaxed">{body}</p>
         {imageUrl && (
           <div className="my-3">
-            <img src={imageUrl} alt="Post visual" className="w-full rounded object-cover" style={{ maxHeight: '300px' }} />
+            <img src={imageUrl} alt={`${platform} post image for: ${hook.substring(0, 50)}...`} className="w-full rounded object-cover" style={{ maxHeight: '300px' }} />
           </div>
         )}
         <div className="pt-2">
@@ -143,7 +143,7 @@ const PostPreview = ({ platform, hook, body, cta, hashtags, imageUrl }: PostPrev
         <p className="text-sm whitespace-pre-wrap">{body}</p>
         {imageUrl && (
           <div className="my-2">
-            <img src={imageUrl} alt="Post visual" className="w-full rounded-lg object-cover" style={{ maxHeight: '320px' }} />
+            <img src={imageUrl} alt={`${platform} post image for: ${hook.substring(0, 50)}...`} className="w-full rounded-lg object-cover" style={{ maxHeight: '320px' }} />
           </div>
         )}
         <p className="text-sm text-blue-500">{cta}</p>
@@ -160,7 +160,7 @@ const PostPreview = ({ platform, hook, body, cta, hashtags, imageUrl }: PostPrev
         <p className="text-sm whitespace-pre-wrap">{body}</p>
         {imageUrl && (
           <div className="my-3">
-            <img src={imageUrl} alt="Post visual" className="w-full rounded-lg object-cover" style={{ maxHeight: '350px' }} />
+            <img src={imageUrl} alt={`${platform} post image for: ${hook.substring(0, 50)}...`} className="w-full rounded-lg object-cover" style={{ maxHeight: '350px' }} />
           </div>
         )}
         <p className="text-sm font-semibold text-primary">{cta}</p>

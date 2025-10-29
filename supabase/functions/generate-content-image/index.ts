@@ -14,6 +14,8 @@ const PLATFORM_DIMENSIONS = {
   'TikTok': { width: 1080, height: 1920 },
 };
 
+const DEFAULT_PLATFORM = 'Instagram';
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -29,13 +31,20 @@ serve(async (req) => {
     }
 
     // Generate intelligent image prompt based on content and platform
-    const imagePrompt = generateImagePrompt(hook, body, trendTitle, platform, niche);
+    let imagePrompt = generateImagePrompt(hook, body, trendTitle, platform, niche);
+    
+    // Validate and truncate prompt if too long (max 500 characters for URL safety)
+    const MAX_PROMPT_LENGTH = 500;
+    if (imagePrompt.length > MAX_PROMPT_LENGTH) {
+      imagePrompt = imagePrompt.substring(0, MAX_PROMPT_LENGTH);
+      console.log('Prompt truncated to:', imagePrompt.length, 'characters');
+    }
     
     console.log('Generated prompt:', imagePrompt);
 
     // Use Pollinations.AI (free, no API key required)
     const dimensions = PLATFORM_DIMENSIONS[platform as keyof typeof PLATFORM_DIMENSIONS] || 
-                      PLATFORM_DIMENSIONS['Instagram'];
+                      PLATFORM_DIMENSIONS[DEFAULT_PLATFORM];
     
     // Encode the prompt for URL
     const encodedPrompt = encodeURIComponent(imagePrompt);
