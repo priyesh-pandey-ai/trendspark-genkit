@@ -23,9 +23,22 @@ dist-ssr
 *.sln
 *.sw?
 
+# Azure Static Web Apps
+swa-db-connections
+.azure
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.*.local
+
 # Supabase
 supabase/.temp/
-.env.local
+
+# Build artifacts
+build/
+.output/
 
 # Test files (optional - remove if you want to keep them)
 test-*.js
