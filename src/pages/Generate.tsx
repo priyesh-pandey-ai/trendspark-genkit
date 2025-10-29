@@ -169,12 +169,18 @@ const Generate = () => {
           description: "Creating visuals for your content",
         });
 
+        console.log('📸 Starting image generation for', data.contentKits.length, 'kits');
+
         const imagePromises = data.contentKits.map(async (kit: ContentKit, index: number) => {
+          console.log(`🎨 Generating image ${index + 1} for ${kit.platform}`);
           const result = await generateImageForKit(kit, index, brand);
+          console.log(`${result ? '✅' : '❌'} Image ${index + 1} (${kit.platform}):`, result);
           return result;
         });
 
         const imageResults = await Promise.all(imagePromises);
+        
+        console.log('🖼️ All image results:', imageResults);
         
         // Update contentKits with image data
         const kitsWithImages = data.contentKits.map((kit: ContentKit, index: number) => ({
@@ -183,6 +189,7 @@ const Generate = () => {
           image_prompt: imageResults[index]?.imagePrompt || null,
         }));
         
+        console.log('📦 Final kits with images:', kitsWithImages);
         setContentKits(kitsWithImages);
         
         // Save to database with images
@@ -290,6 +297,8 @@ const Generate = () => {
     setImageGenerating(prev => ({ ...prev, [index]: true }));
     
     try {
+      console.log(`🎨 Calling image API for ${kit.platform} (index ${index})`);
+      
       const { data, error } = await supabase.functions.invoke('generate-content-image', {
         body: {
           hook: kit.hook,
@@ -300,27 +309,31 @@ const Generate = () => {
         }
       });
 
-      if (error) throw error;
+      console.log(`📥 Image API response for ${kit.platform}:`, { data, error });
+
+      if (error) {
+        console.error(`❌ Error for ${kit.platform}:`, error);
+        throw error;
+      }
 
       if (data && data.imageUrl) {
-        setContentKits(prev => prev.map((k, i) => 
-          i === index ? { ...k, image_url: data.imageUrl, image_prompt: data.imagePrompt } : k
-        ));
-        
+        console.log(`✅ Got image for ${kit.platform}:`, data.imageUrl);
         return { imageUrl: data.imageUrl, imagePrompt: data.imagePrompt };
+      } else {
+        console.warn(`⚠️ No image URL in response for ${kit.platform}`);
+        return null;
       }
     } catch (error: any) {
-      console.error('Error generating image:', error);
+      console.error(`❌ Exception generating image for ${kit.platform}:`, error);
       toast({
         title: "Image generation failed",
-        description: `Could not generate image for ${kit.platform}`,
+        description: `Could not generate image for ${kit.platform}: ${error.message}`,
         variant: "destructive",
       });
+      return null;
     } finally {
       setImageGenerating(prev => ({ ...prev, [index]: false }));
     }
-    
-    return null;
   };
 
   return (
