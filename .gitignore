@@ -27,6 +27,9 @@ dist-ssr
 supabase/.temp/
 .env.local
 
+# Environment variables
+.env
+
 # Test files (optional - remove if you want to keep them)
 test-*.js
 test-*.html
