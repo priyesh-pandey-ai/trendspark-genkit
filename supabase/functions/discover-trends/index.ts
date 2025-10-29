@@ -25,49 +25,62 @@ async function fetchRedditTrends(): Promise<Trend[]> {
     const subreddits = ['technology', 'business', 'lifestyle', 'health', 'marketing'];
     
     for (const subreddit of subreddits) {
-      const response = await fetch(
-        `https://www.reddit.com/r/${subreddit}/hot.json?limit=5`,
-        {
-          headers: {
-            'User-Agent': 'TrendCraftBot/1.0',
-          },
-        }
-      );
-      
-      if (!response.ok) {
-        console.error(`Failed to fetch from r/${subreddit}:`, response.status);
-        continue;
-      }
-      
-      const data = await response.json();
-      const posts = data.data?.children || [];
-      
-      for (const post of posts) {
-        const postData = post.data;
-        
-        // Calculate engagement score based on upvotes and comments
-        const engagement_score = Math.min(
-          100,
-          Math.round((postData.ups + postData.num_comments * 2) / 100)
+      try {
+        const response = await fetch(
+          `https://www.reddit.com/r/${subreddit}/hot.json?limit=5`,
+          {
+            headers: {
+              'User-Agent': 'TrendCraftBot/1.0',
+            },
+          }
         );
         
-        // Calculate growth rate based on score relative to subscribers
-        const growth_rate = Math.min(
-          200,
-          Math.round((postData.score / 1000) * 100)
-        );
-        
-        if (engagement_score > 30) {
-          trends.push({
-            topic: postData.title.substring(0, 200),
-            description: postData.selftext?.substring(0, 500) || `Trending discussion on r/${subreddit}`,
-            source: 'reddit',
-            category: getCategoryFromSubreddit(subreddit),
-            growth_rate,
-            engagement_score,
-            trending_since: new Date(postData.created_utc * 1000).toISOString(),
-          });
+        if (!response.ok) {
+          console.error(`Failed to fetch from r/${subreddit}:`, response.status);
+          continue;
         }
+        
+        const data = await response.json();
+        const posts = data.data?.children || [];
+        
+        for (const post of posts) {
+          const postData = post.data;
+          
+          // Skip removed or deleted posts
+          if (postData.removed || postData.author === '[deleted]') {
+            continue;
+          }
+          
+          // Calculate engagement score based on upvotes and comments
+          const engagement_score = Math.min(
+            100,
+            Math.round((postData.ups + postData.num_comments * 2) / 100)
+          );
+          
+          // Calculate growth rate based on score relative to subscribers
+          const growth_rate = Math.min(
+            200,
+            Math.round((postData.score / 1000) * 100)
+          );
+          
+          if (engagement_score > 30) {
+            trends.push({
+              topic: postData.title.substring(0, 200),
+              description: postData.selftext?.substring(0, 500) || `Trending discussion on r/${subreddit}`,
+              source: 'reddit',
+              category: getCategoryFromSubreddit(subreddit),
+              growth_rate,
+              engagement_score,
+              trending_since: new Date(postData.created_utc * 1000).toISOString(),
+            });
+          }
+        }
+        
+        // Add a small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (subredditError) {
+        console.error(`Error fetching from r/${subreddit}:`, subredditError);
+        // Continue with other subreddits even if one fails
       }
     }
   } catch (error) {
