@@ -12,10 +12,10 @@ serve(async (req) => {
 
   try {
     const { samplePosts, niche } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not configured. Get a free key at https://ai.google.dev');
     }
 
     console.log('Generating voice card for niche:', niche);
@@ -37,24 +37,28 @@ ${samplePosts.join('\n\n---\n\n')}
 
 Format the output as clear markdown sections.`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Use Google Gemini API directly
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: 'You are a brand voice expert. Create clear, actionable brand voice guidelines.' },
-          { role: 'user', content: prompt }
-        ],
+        contents: [{
+          parts: [{
+            text: `You are a brand voice expert. Create clear, actionable brand voice guidelines.\n\n${prompt}`
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2048,
+        }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
+      console.error('Gemini API error:', response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -63,20 +67,25 @@ Format the output as clear markdown sections.`;
         );
       }
       
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits exhausted. Please add credits to continue.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error('AI gateway error');
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const voiceCard = data.choices[0].message.content;
+    
+    // Check if response was blocked by safety filters
+    if (!data.candidates || data.candidates.length === 0) {
+      console.error('No candidates in response:', JSON.stringify(data));
+      throw new Error('Voice card generation was blocked. Please try different sample posts or adjust your input.');
+    }
 
-    console.log('Voice card generated successfully');
+    const voiceCard = data.candidates[0].content.parts[0].text;
+
+    // Validate that we got a meaningful response
+    if (!voiceCard || voiceCard.trim().length < 50) {
+      throw new Error('Generated voice card is too short. Please try again with more detailed sample posts.');
+    }
+
+    console.log('Voice card generated successfully, length:', voiceCard.length);
 
     return new Response(
       JSON.stringify({ voiceCard }),
@@ -84,8 +93,18 @@ Format the output as clear markdown sections.`;
     );
   } catch (error) {
     console.error('Error in generate-voice-card:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'An error occurred while generating the brand voice card.';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

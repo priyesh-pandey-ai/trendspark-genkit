@@ -33,6 +33,15 @@ swa-db-connections
 .env.production
 .env.*.local
 
-# Build artifacts that might be missed
+# Supabase
+supabase/.temp/
+
+# Build artifacts
 build/
 .output/
+
+# Test files (optional - remove if you want to keep them)
+test-*.js
+test-*.html
+browser-test.js
+list-models.js
