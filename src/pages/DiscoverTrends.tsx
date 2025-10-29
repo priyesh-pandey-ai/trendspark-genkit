@@ -12,14 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TrendingUp, Flame, RefreshCw, Sparkles, LogOut } from "lucide-react";
+import { TrendingUp, Flame, RefreshCw, Sparkles, LogOut, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMockTrends, type Trend } from "@/lib/mockTrends";
+import { triggerTrendDiscovery } from "@/lib/trendDiscovery";
 
 const DiscoverTrends = () => {
   const [trends, setTrends] = useState<Trend[]>([]);
   const [filteredTrends, setFilteredTrends] = useState<Trend[]>([]);
   const [loading, setLoading] = useState(true);
+  const [discovering, setDiscovering] = useState(false);
   const [category, setCategory] = useState("All");
   const [sortBy, setSortBy] = useState("growth_rate");
   const navigate = useNavigate();
@@ -106,6 +108,42 @@ const DiscoverTrends = () => {
     fetchTrends();
   };
 
+  const handleDiscoverNewTrends = async () => {
+    setDiscovering(true);
+    try {
+      toast({
+        title: "Discovering trends...",
+        description: "Fetching latest trending topics from external sources",
+      });
+
+      const result = await triggerTrendDiscovery();
+
+      if (result.success) {
+        toast({
+          title: "✨ New trends discovered!",
+          description: `Found ${result.data?.trendsDiscovered || 0} trending topics`,
+        });
+        // Refresh the trends list
+        await fetchTrends();
+      } else {
+        toast({
+          title: "Trend discovery unavailable",
+          description: "Using cached trends. Check your API configuration.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error discovering trends:', error);
+      toast({
+        title: "Error discovering trends",
+        description: "Failed to fetch new trends. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
   const handleGenerateContent = (trend: Trend) => {
     navigate('/generate', { state: { trendTitle: trend.topic } });
   };
@@ -172,6 +210,15 @@ const DiscoverTrends = () => {
 
         {/* Filters Bar */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
+          <Button 
+            onClick={handleDiscoverNewTrends} 
+            disabled={discovering}
+            className="gradient-hero text-white sm:w-auto w-full"
+          >
+            <Zap className={`h-4 w-4 mr-2 ${discovering ? 'animate-spin' : ''}`} />
+            {discovering ? 'Discovering...' : 'Discover New Trends'}
+          </Button>
+
           <Button onClick={handleRefresh} variant="outline" className="sm:w-auto w-full">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh Trends

@@ -1,8 +1,18 @@
-# Welcome to your Lovable project
+# Trend-Craft AI - GenAI Trend-to-Content Studio
+
+Transform emerging trends into brand-ready social media content with AI-powered voice matching and multi-platform optimization.
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/120e73e4-1bb3-4e63-acb7-418cd94526fe
+
+## Features
+
+- 🔥 **Trend Discovery**: Automatically discover trending topics from Reddit, Twitter, and Google Trends
+- 🎯 **Brand Voice Matching**: AI-powered brand voice extraction and content generation
+- 📱 **Multi-Platform Support**: Generate optimized content for Instagram, LinkedIn, Twitter, Facebook, and TikTok
+- 📊 **Analytics Dashboard**: Track content performance across platforms
+- 📚 **Content Library**: Manage and organize all your generated content
 
 ## How can I edit this code?
 
@@ -54,11 +64,34 @@ npm run dev
 
 This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Frontend**: Vite, TypeScript, React, shadcn-ui, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Edge Functions, Auth)
+- **AI**: Lovable AI Gateway (Gemini 2.5 Flash)
+- **Trend Sources**: Reddit API, Twitter API, Google Trends (via Serper)
+
+## Trend Discovery System
+
+The application includes an automated trend discovery system that fetches trending topics from multiple sources.
+
+### Setup Trend Discovery
+
+1. **Configure GitHub Secrets** (for automated trend updates):
+   - `SUPABASE_URL`: Your Supabase project URL
+   - `SUPABASE_ANON_KEY`: Your Supabase anonymous key
+
+2. **Optional API Keys** (add to Supabase Edge Function secrets):
+   - `TWITTER_BEARER_TOKEN`: For Twitter/X trends
+   - `SERPER_API_KEY`: For Google Trends proxy
+
+3. **Manual Trigger**: 
+   - Go to Actions tab → "Discover Trends" → "Run workflow"
+   - Or call the edge function directly: `/functions/v1/discover-trends`
+
+4. **Automatic Updates**: 
+   - Trends are automatically discovered every 6 hours via GitHub Actions
+   - Configure schedule in `.github/workflows/discover-trends.yml`
+
+For detailed setup instructions, see [Trend Discovery Documentation](supabase/functions/discover-trends/README.md).
 
 ## How can I deploy this project?
 
