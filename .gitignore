@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Supabase
+supabase/.temp/
+.env.local
+
+# Test files (optional - remove if you want to keep them)
+test-*.js
+test-*.html
+browser-test.js
+list-models.js
