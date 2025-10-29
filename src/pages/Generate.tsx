@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Sparkles, Copy, Download, Library } from "lucide-react";
+import { ArrowLeft, Sparkles, Copy, Download, Library, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import PostPreview from "@/components/PostPreview";
 
@@ -23,6 +23,8 @@ interface ContentKit {
   body: string;
   cta: string;
   hashtags: string[];
+  image_url?: string;
+  image_prompt?: string;
 }
 
 const Generate = () => {
@@ -36,6 +38,8 @@ const Generate = () => {
   const [platforms, setPlatforms] = useState<string[]>(["Instagram", "LinkedIn", "Twitter"]);
   const [loading, setLoading] = useState(false);
   const [contentKits, setContentKits] = useState<ContentKit[]>([]);
+  const [generateImages, setGenerateImages] = useState(true);
+  const [imageGenerating, setImageGenerating] = useState<{ [key: number]: boolean }>({});
 
   const availablePlatforms = ["Instagram", "LinkedIn", "Twitter", "Facebook", "TikTok"];
 
@@ -158,27 +162,71 @@ const Generate = () => {
 
       setContentKits(data.contentKits);
 
-      // Save to database
-      const kitsToInsert = data.contentKits.map((kit: ContentKit) => ({
-        brand_id: selectedBrand,
-        trend_title: trendTitle,
-        platform: kit.platform,
-        hook: kit.hook,
-        body: kit.body,
-        cta: kit.cta,
-        hashtags: kit.hashtags,
-        status: 'draft'
-      }));
+      // Generate images if enabled
+      if (generateImages) {
+        toast({
+          title: "Generating images...",
+          description: "Creating visuals for your content",
+        });
 
-      const { error: insertError } = await supabase
-        .from('content_kits')
-        .insert(kitsToInsert);
+        const imagePromises = data.contentKits.map(async (kit: ContentKit, index: number) => {
+          const result = await generateImageForKit(kit, index, brand);
+          return result;
+        });
 
-      if (insertError) throw insertError;
+        const imageResults = await Promise.all(imagePromises);
+        
+        // Update contentKits with image data
+        const kitsWithImages = data.contentKits.map((kit: ContentKit, index: number) => ({
+          ...kit,
+          image_url: imageResults[index]?.imageUrl || null,
+          image_prompt: imageResults[index]?.imagePrompt || null,
+        }));
+        
+        setContentKits(kitsWithImages);
+        
+        // Save to database with images
+        const kitsToInsert = kitsWithImages.map((kit: ContentKit) => ({
+          brand_id: selectedBrand,
+          trend_title: trendTitle,
+          platform: kit.platform,
+          hook: kit.hook,
+          body: kit.body,
+          cta: kit.cta,
+          hashtags: kit.hashtags,
+          image_url: kit.image_url,
+          image_prompt: kit.image_prompt,
+          status: 'draft'
+        }));
+
+        const { error: insertError } = await supabase
+          .from('content_kits')
+          .insert(kitsToInsert);
+
+        if (insertError) throw insertError;
+      } else {
+        // Save to database without images
+        const kitsToInsert = data.contentKits.map((kit: ContentKit) => ({
+          brand_id: selectedBrand,
+          trend_title: trendTitle,
+          platform: kit.platform,
+          hook: kit.hook,
+          body: kit.body,
+          cta: kit.cta,
+          hashtags: kit.hashtags,
+          status: 'draft'
+        }));
+
+        const { error: insertError } = await supabase
+          .from('content_kits')
+          .insert(kitsToInsert);
+
+        if (insertError) throw insertError;
+      }
 
       toast({
         title: "Content generated!",
-        description: `Created ${data.contentKits.length} content variants`,
+        description: `Created ${data.contentKits.length} content variants${generateImages ? ' with images' : ''}`,
       });
     } catch (error: any) {
       console.error('Error generating content:', error);
@@ -207,7 +255,9 @@ const Generate = () => {
       Hook: kit.hook,
       Body: kit.body,
       CTA: kit.cta,
-      Hashtags: kit.hashtags.join(' ')
+      Hashtags: kit.hashtags.join(' '),
+      ImageURL: kit.image_url || '',
+      ImagePrompt: kit.image_prompt || ''
     }));
 
     const headers = Object.keys(csv[0]).join(',');
@@ -234,6 +284,43 @@ const Generate = () => {
         ? prev.filter(p => p !== platform)
         : [...prev, platform]
     );
+  };
+
+  const generateImageForKit = async (kit: ContentKit, index: number, brand: Brand) => {
+    setImageGenerating(prev => ({ ...prev, [index]: true }));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-content-image', {
+        body: {
+          hook: kit.hook,
+          body: kit.body,
+          trendTitle: trendTitle,
+          platform: kit.platform,
+          niche: brand.niche
+        }
+      });
+
+      if (error) throw error;
+
+      if (data && data.imageUrl) {
+        setContentKits(prev => prev.map((k, i) => 
+          i === index ? { ...k, image_url: data.imageUrl, image_prompt: data.imagePrompt } : k
+        ));
+        
+        return { imageUrl: data.imageUrl, imagePrompt: data.imagePrompt };
+      }
+    } catch (error: any) {
+      console.error('Error generating image:', error);
+      toast({
+        title: "Image generation failed",
+        description: `Could not generate image for ${kit.platform}`,
+        variant: "destructive",
+      });
+    } finally {
+      setImageGenerating(prev => ({ ...prev, [index]: false }));
+    }
+    
+    return null;
   };
 
   return (
@@ -311,6 +398,22 @@ const Generate = () => {
                 ))}
               </div>
 
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="generate-images"
+                    checked={generateImages}
+                    onCheckedChange={(checked) => setGenerateImages(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="generate-images"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Generate Images (AI-powered visuals)
+                  </label>
+                </div>
+              </div>
+
               <Button
                 type="submit"
                 disabled={loading}
@@ -341,14 +444,30 @@ const Generate = () => {
                 <Card className="p-6 shadow-md">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-lg">{kit.platform}</h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(kit)}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy
-                    </Button>
+                    <div className="flex gap-2">
+                      {generateImages && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            const brand = brands.find(b => b.id === selectedBrand);
+                            if (brand) await generateImageForKit(kit, i, brand);
+                          }}
+                          disabled={imageGenerating[i]}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${imageGenerating[i] ? 'animate-spin' : ''}`} />
+                          {imageGenerating[i] ? 'Generating...' : 'Regenerate Image'}
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCopy(kit)}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
@@ -380,6 +499,7 @@ const Generate = () => {
                   body={kit.body}
                   cta={kit.cta}
                   hashtags={kit.hashtags}
+                  imageUrl={kit.image_url}
                 />
               </div>
             ))}

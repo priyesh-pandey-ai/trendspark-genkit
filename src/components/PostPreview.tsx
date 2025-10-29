@@ -11,9 +11,10 @@ interface PostPreviewProps {
   body: string;
   cta: string;
   hashtags: string[];
+  imageUrl?: string;
 }
 
-const PostPreview = ({ platform, hook, body, cta, hashtags }: PostPreviewProps) => {
+const PostPreview = ({ platform, hook, body, cta, hashtags, imageUrl }: PostPreviewProps) => {
   const previewRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -85,6 +86,11 @@ const PostPreview = ({ platform, hook, body, cta, hashtags }: PostPreviewProps) 
           <div className="text-xs text-gray-500">{platform}</div>
         </div>
       </div>
+      {imageUrl && (
+        <div className="mb-4">
+          <img src={imageUrl} alt="Post visual" className="w-full rounded-lg object-cover" style={{ maxHeight: '400px' }} />
+        </div>
+      )}
       <div className="space-y-3">
         <h3 className="font-bold text-lg">{hook}</h3>
         <p className="text-sm whitespace-pre-wrap">{body}</p>
@@ -108,6 +114,11 @@ const PostPreview = ({ platform, hook, body, cta, hashtags }: PostPreviewProps) 
       <div className="space-y-3">
         <h3 className="font-semibold text-base">{hook}</h3>
         <p className="text-sm whitespace-pre-wrap leading-relaxed">{body}</p>
+        {imageUrl && (
+          <div className="my-3">
+            <img src={imageUrl} alt="Post visual" className="w-full rounded object-cover" style={{ maxHeight: '300px' }} />
+          </div>
+        )}
         <div className="pt-2">
           <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
             {cta}
@@ -130,6 +141,11 @@ const PostPreview = ({ platform, hook, body, cta, hashtags }: PostPreviewProps) 
       <div className="space-y-2">
         <p className="font-bold text-sm">{hook}</p>
         <p className="text-sm whitespace-pre-wrap">{body}</p>
+        {imageUrl && (
+          <div className="my-2">
+            <img src={imageUrl} alt="Post visual" className="w-full rounded-lg object-cover" style={{ maxHeight: '320px' }} />
+          </div>
+        )}
         <p className="text-sm text-blue-500">{cta}</p>
         <p className="text-xs text-blue-500">{hashtags.join(' ')}</p>
       </div>
@@ -142,6 +158,11 @@ const PostPreview = ({ platform, hook, body, cta, hashtags }: PostPreviewProps) 
         <div className="text-xs font-semibold text-gray-500 uppercase">{platform}</div>
         <h3 className="font-bold text-lg">{hook}</h3>
         <p className="text-sm whitespace-pre-wrap">{body}</p>
+        {imageUrl && (
+          <div className="my-3">
+            <img src={imageUrl} alt="Post visual" className="w-full rounded-lg object-cover" style={{ maxHeight: '350px' }} />
+          </div>
+        )}
         <p className="text-sm font-semibold text-primary">{cta}</p>
         <p className="text-xs text-secondary">{hashtags.join(' ')}</p>
       </div>
