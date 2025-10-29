@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Plus, LogOut, Zap, Library, BarChart3 } from "lucide-react";
+import { Sparkles, Plus, LogOut, Zap, Library, BarChart3, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Brand {
@@ -80,7 +80,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           <Card className="p-6 gradient-card border-primary/10 hover:shadow-lg transition-shadow cursor-pointer"
                 onClick={() => navigate('/create-brand')}>
             <div className="flex items-start gap-4">
@@ -91,6 +91,21 @@ const Dashboard = () => {
                 <h3 className="font-semibold text-lg mb-2">Create New Brand</h3>
                 <p className="text-sm text-muted-foreground">
                   Set up a new brand profile with AI-powered voice extraction
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6 gradient-card border-green-500/10 hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => navigate('/discover-trends')}>
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-lg bg-green-500/10">
+                <TrendingUp className="h-6 w-6 text-green-500" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-lg mb-2">Discover Trends</h3>
+                <p className="text-sm text-muted-foreground">
+                  Find trending topics to create viral content
                 </p>
               </div>
             </div>

@@ -11,6 +11,7 @@ import BrandDetail from "./pages/BrandDetail";
 import Generate from "./pages/Generate";
 import ContentLibrary from "./pages/ContentLibrary";
 import Analytics from "./pages/Analytics";
+import DiscoverTrends from "./pages/DiscoverTrends";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/generate" element={<Generate />} />
           <Route path="/content-library" element={<ContentLibrary />} />
           <Route path="/analytics/:brandId" element={<Analytics />} />
+          <Route path="/discover-trends" element={<DiscoverTrends />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

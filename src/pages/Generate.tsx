@@ -27,14 +27,15 @@ interface ContentKit {
 
 const Generate = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string>(location.state?.brandId || "");
-  const [trendTitle, setTrendTitle] = useState("");
+  const [trendTitle, setTrendTitle] = useState(location.state?.trendTitle || "");
   const [platforms, setPlatforms] = useState<string[]>(["Instagram", "LinkedIn", "Twitter"]);
   const [loading, setLoading] = useState(false);
   const [contentKits, setContentKits] = useState<ContentKit[]>([]);
-  const navigate = useNavigate();
-  const { toast } = useToast();
 
   const availablePlatforms = ["Instagram", "LinkedIn", "Twitter", "Facebook", "TikTok"];
 

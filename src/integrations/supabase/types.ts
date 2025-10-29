@@ -118,6 +118,45 @@ export type Database = {
         }
         Relationships: []
       }
+      trends: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          engagement_score: number | null
+          growth_rate: number | null
+          id: string
+          source: string
+          topic: string
+          trending_since: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          engagement_score?: number | null
+          growth_rate?: number | null
+          id?: string
+          source: string
+          topic: string
+          trending_since?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          engagement_score?: number | null
+          growth_rate?: number | null
+          id?: string
+          source?: string
+          topic?: string
+          trending_since?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
