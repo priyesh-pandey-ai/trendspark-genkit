@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Generate Content Kit</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        button { padding: 10px 20px; font-size: 16px; }
+        .result { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 5px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <h1>Test Generate Content Kit Edge Function</h1>
+    
+    <button onclick="testFunction()">Generate Content</button>
+    <button onclick="clearResults()">Clear</button>
+    
+    <div id="result"></div>
+
+    <script>
+        const supabase = supabase.createClient(
+            'https://azrbnenohawcdawnxzat.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6cmJuZW5vaGF3Y2Rhd254emF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NTE4NzksImV4cCI6MjA3NzMyNzg3OX0.yycaVKnsig4fwbmyDlpXky656WkeLrBKuSINquQXWXI'
+        );
+
+        async function testFunction() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result">⏳ Testing...</div>';
+            
+            const sampleVoiceCard = `# Brand Voice Card
+
+**One-line brand ethos:** Elevating the daily coffee ritual with quality and convenience.
+
+**Tone descriptors:**
+1. Direct
+2. Reliable
+3. Approachable`;
+
+            try {
+                console.log('Calling generate-content-kit...');
+                
+                const { data, error } = await supabase.functions.invoke('generate-content-kit', {
+                    body: {
+                        voiceCard: sampleVoiceCard,
+                        trendTitle: 'Sustainable Coffee Trends 2025',
+                        platforms: ['Instagram', 'LinkedIn'],
+                        niche: 'D2C Coffee Roaster'
+                    }
+                });
+
+                console.log('Response:', { data, error });
+
+                if (error) {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ Error</h3>
+                            <p><strong>Message:</strong> ${error.message}</p>
+                            <pre>${JSON.stringify(error, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ Success!</h3>
+                            <p>Generated ${data.contentKits.length} content kits</p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Exception</h3>
+                        <pre>${err.toString()}\n\n${err.stack}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('result').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

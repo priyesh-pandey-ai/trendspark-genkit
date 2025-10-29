@@ -91,22 +91,70 @@ const Generate = () => {
     try {
       const brand = brands.find(b => b.id === selectedBrand);
       if (!brand) throw new Error("Brand not found");
+      
+      // Check if brand has a voice card
+      if (!brand.voice_card || brand.voice_card.trim().length === 0) {
+        throw new Error("This brand doesn't have a voice card yet. Please create the brand's voice card first.");
+      }
 
       toast({
         title: "Generating content...",
         description: "This may take a moment",
       });
 
+      // Validate all required fields
+      if (!trendTitle || trendTitle.trim().length === 0) {
+        throw new Error("Please enter a trend title");
+      }
+      
+      if (!platforms || platforms.length === 0) {
+        throw new Error("Please select at least one platform");
+      }
+
+      // Sanitize trend title - remove extra spaces and trim
+      const sanitizedTrendTitle = trendTitle.trim().replace(/\s+/g, ' ');
+      
+      // Validate sanitized title
+      if (sanitizedTrendTitle.length > 500) {
+        throw new Error("Trend title is too long. Please keep it under 500 characters.");
+      }
+
+      console.log('Calling generate-content-kit with:', {
+        hasVoiceCard: !!brand.voice_card,
+        voiceCardLength: brand.voice_card?.length,
+        voiceCardPreview: brand.voice_card?.substring(0, 100) + '...',
+        originalTrendTitle: trendTitle,
+        sanitizedTrendTitle: sanitizedTrendTitle,
+        trendTitleLength: sanitizedTrendTitle.length,
+        platforms,
+        platformsCount: platforms.length,
+        niche: brand.niche
+      });
+
       const { data, error } = await supabase.functions.invoke('generate-content-kit', {
         body: {
           voiceCard: brand.voice_card,
-          trendTitle,
+          trendTitle: sanitizedTrendTitle,
           platforms,
           niche: brand.niche
         }
       });
 
-      if (error) throw error;
+      console.log('Edge Function response:', { data, error });
+
+      if (error) {
+        console.error('Edge Function error details:', error);
+        // Check if there's a response with error details
+        if (error.context && error.context.body) {
+          const errorBody = await error.context.text();
+          console.error('Error response body:', errorBody);
+        }
+        throw error;
+      }
+
+      if (!data || !data.contentKits) {
+        throw new Error('Invalid response from Edge Function: missing contentKits');
+      }
 
       setContentKits(data.contentKits);
 
