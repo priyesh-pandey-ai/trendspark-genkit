@@ -15,13 +15,13 @@ jobs:
     steps:
       - name: Check Required Secrets
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: |
           if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
             echo "::warning::Trend discovery workflow is not configured. Please set the following GitHub secrets:"
-            echo "::warning::  - SUPABASE_URL: Your Supabase project URL"
-            echo "::warning::  - SUPABASE_ANON_KEY: Your Supabase anonymous key"
+            echo "::warning::  - VITE_SUPABASE_URL: Your Supabase project URL"
+            echo "::warning::  - VITE_SUPABASE_PUBLISHABLE_KEY: Your Supabase publishable key"
             echo "::warning::See DEPLOYMENT.md for setup instructions."
             echo ""
             echo "ℹ️  Skipping trend discovery - secrets not configured"
@@ -31,8 +31,8 @@ jobs:
       
       - name: Trigger Trend Discovery
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${SUPABASE_URL}/functions/v1/discover-trends" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \

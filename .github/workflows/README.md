@@ -14,24 +14,14 @@ Automatically discovers trending topics from multiple sources (Reddit, Twitter, 
 
 #### Setup Required
 
-To enable this workflow, you need to configure the following GitHub repository secrets:
+This workflow uses the same Supabase secrets as your Azure Static Web App deployment:
 
-1. Go to your repository → **Settings** → **Secrets and variables** → **Actions**
-2. Click **New repository secret**
-3. Add the following secrets:
+| Secret Name | Description |
+|-------------|-------------|
+| `VITE_SUPABASE_URL` | Your Supabase project URL (already configured) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Your Supabase publishable key (already configured) |
 
-| Secret Name | Description | How to Get |
-|-------------|-------------|------------|
-| `SUPABASE_URL` | Your Supabase project URL | Found in your Supabase project settings (e.g., `https://your-project.supabase.co`) |
-| `SUPABASE_ANON_KEY` | Your Supabase anonymous/public key | Found in your Supabase project settings under API keys |
-
-#### Finding Your Supabase Credentials
-
-1. Go to your [Supabase Dashboard](https://supabase.com/dashboard)
-2. Select your project
-3. Go to **Settings** → **API**
-4. Copy the **Project URL** for `SUPABASE_URL`
-5. Copy the **anon/public** key for `SUPABASE_ANON_KEY`
+**Note:** If you've already deployed the app to Azure, these secrets should already be configured and the workflow will work automatically.
 
 #### Workflow Behavior
 
@@ -41,7 +31,8 @@ To enable this workflow, you need to configure the following GitHub repository s
 #### Troubleshooting
 
 **Workflow shows warnings about missing secrets:**
-- Follow the setup instructions above to add the required secrets
+- The secrets should already be configured if you deployed to Azure
+- If not, add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in GitHub Settings → Secrets and variables → Actions
 - After adding secrets, the next scheduled run (or manual trigger) will work normally
 
 **Workflow fails with HTTP errors:**
