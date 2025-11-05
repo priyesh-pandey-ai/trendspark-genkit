@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { discoverRedditTrends } from "./redditApi";
 
 /**
  * Triggers the discover-trends edge function to fetch fresh trending topics
@@ -7,21 +8,50 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export async function triggerTrendDiscovery() {
   try {
+    console.log('🚀 Starting trend discovery process...');
+    
+    // First, try to discover trends from Reddit directly
+    console.log('📡 Attempting to discover trends from Reddit...');
+    const redditResult = await discoverRedditTrends();
+    
+    console.log('Reddit discovery result:', redditResult);
+    
+    if (redditResult.success && redditResult.trendsDiscovered > 0) {
+      console.log(`✅ Discovered ${redditResult.trendsDiscovered} trends from Reddit`);
+      
+      return {
+        success: true,
+        data: {
+          trendsDiscovered: redditResult.trendsDiscovered,
+          source: 'reddit',
+        },
+      };
+    }
+
+    // If Reddit failed, log the error
+    if (!redditResult.success) {
+      console.error('❌ Reddit discovery failed:', redditResult.error);
+    }
+
+    // Fallback to edge function if Reddit fails or returns no results
+    console.log('⚠️ Falling back to edge function for trend discovery...');
     const { data, error } = await supabase.functions.invoke('discover-trends', {
       method: 'POST',
     });
 
     if (error) {
-      console.error('Error triggering trend discovery:', error);
+      console.error('❌ Error triggering edge function:', error);
       throw error;
     }
+
+    console.log('✅ Edge function response:', data);
 
     return {
       success: true,
       data,
     };
   } catch (error) {
-    console.error('Failed to trigger trend discovery:', error);
+    console.error('❌ Failed to trigger trend discovery:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

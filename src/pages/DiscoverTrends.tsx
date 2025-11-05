@@ -54,16 +54,46 @@ const DiscoverTrends = () => {
 
       if (error) throw error;
 
-      // If no trends in database, use mock data
+      // If no trends in database, auto-discover from Reddit
       if (!data || data.length === 0) {
+        console.log('No trends in database, auto-discovering from Reddit...');
+        toast({
+          title: "No trends found",
+          description: "Automatically discovering trends from Reddit...",
+        });
+        
+        // Trigger auto-discovery
+        const result = await triggerTrendDiscovery();
+        
+        if (result.success) {
+          // Fetch again after discovery
+          const { data: newData, error: newError } = await supabase
+            .from('trends')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (!newError && newData && newData.length > 0) {
+            setTrends(newData);
+            toast({
+              title: "✨ Trends discovered!",
+              description: `Loaded ${newData.length} trending topics from Reddit`,
+            });
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // If auto-discovery failed, fall back to mock data
         const mockTrends = generateMockTrends();
         setTrends(mockTrends);
         toast({
-          title: "Mock trends loaded",
-          description: "Showing demo trending topics",
+          title: "Using demo data",
+          description: "Click 'Discover New Trends' to fetch real Reddit trends",
+          variant: "default",
         });
       } else {
         setTrends(data);
+        console.log(`Loaded ${data.length} trends from database`);
       }
     } catch (error: any) {
       console.error("Error fetching trends:", error);
@@ -72,7 +102,7 @@ const DiscoverTrends = () => {
       setTrends(mockTrends);
       toast({
         title: "Using demo data",
-        description: "Showing sample trending topics",
+        description: "Error loading trends. Click 'Discover New Trends' to try again.",
       });
     } finally {
       setLoading(false);
@@ -166,12 +196,22 @@ const DiscoverTrends = () => {
 
   const getSourceBadge = (source: string) => {
     const labels: Record<string, string> = {
-      reddit: "Reddit",
-      twitter: "Twitter",
-      google_trends: "Google Trends",
-      manual: "Manual"
+      reddit: "🔥 Reddit",
+      twitter: "🐦 Twitter",
+      google_trends: "📊 Google Trends",
+      manual: "✏️ Manual"
     };
     return labels[source] || source;
+  };
+
+  const getSourceColor = (source: string) => {
+    const colors: Record<string, string> = {
+      reddit: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+      twitter: "bg-blue-400/10 text-blue-400 border-blue-400/20",
+      google_trends: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+      manual: "bg-gray-500/10 text-gray-500 border-gray-500/20"
+    };
+    return colors[source] || "bg-muted/50";
   };
 
   return (
@@ -296,7 +336,7 @@ const DiscoverTrends = () => {
                   <Badge variant="outline" className={getCategoryColor(trend.category)}>
                     {trend.category}
                   </Badge>
-                  <Badge variant="outline" className="bg-muted/50">
+                  <Badge variant="outline" className={getSourceColor(trend.source)}>
                     {getSourceBadge(trend.source)}
                   </Badge>
                 </div>
