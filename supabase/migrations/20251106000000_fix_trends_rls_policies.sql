@@ -4,7 +4,8 @@ ALTER TABLE trends ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies if any
 DROP POLICY IF EXISTS "Allow public read access to trends" ON trends;
 DROP POLICY IF EXISTS "Allow authenticated users to insert trends" ON trends;
-DROP POLICY IF EXISTS "Allow service role to insert trends" ON trends;
+DROP POLICY IF EXISTS "Allow authenticated users to delete trends" ON trends;
+DROP POLICY IF EXISTS "Allow service role full access to trends" ON trends;
 
 -- Allow anyone to read trends (public access)
 CREATE POLICY "Allow public read access to trends"
@@ -19,6 +20,13 @@ ON trends
 FOR INSERT
 TO authenticated
 WITH CHECK (true);
+
+-- Allow authenticated users to delete trends
+CREATE POLICY "Allow authenticated users to delete trends"
+ON trends
+FOR DELETE
+TO authenticated
+USING (true);
 
 -- Allow service role full access (for edge functions)
 CREATE POLICY "Allow service role full access to trends"

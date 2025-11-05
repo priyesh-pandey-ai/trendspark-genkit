@@ -226,17 +226,17 @@ function filterQualityPosts(posts: RedditPost[]): RedditPost[] {
   return posts.filter(post => {
     const { score, num_comments, over_18, subreddit } = post.data;
     
-    // Filter criteria:
+    // Filter criteria (relaxed to get more posts for AI analysis):
     // 1. Not NSFW
-    // 2. Minimum score threshold
-    // 3. Has some engagement (comments)
+    // 2. Minimum score threshold (lowered to 50)
+    // 3. Has some engagement (lowered to 5 comments)
     // 4. Not from banned/low-quality subreddits
     
     const bannedSubreddits = ['circlejerk', 'copypasta', 'shitpost'];
     const isQuality = 
       !over_18 &&
-      score >= 100 &&
-      num_comments >= 10 &&
+      score >= 50 &&  // Lowered from 100
+      num_comments >= 5 &&  // Lowered from 10
       !bannedSubreddits.some(banned => subreddit.toLowerCase().includes(banned));
     
     return isQuality;
@@ -254,14 +254,15 @@ export async function discoverRedditTrends(): Promise<{
   try {
     console.log('🔍 Fetching trending posts from Reddit...');
     
-    // Fetch from multiple sources for diversity
-    const [hotPosts, popularPosts] = await Promise.all([
+    // Fetch 100 posts from multiple sources for better coverage
+    const [hotPosts, popularPosts, risingPosts] = await Promise.all([
       fetchRedditTrendingPosts('all', 'day', 50),
-      fetchRedditTrendingPosts('popular', 'day', 30),
+      fetchRedditTrendingPosts('popular', 'day', 40),
+      fetchRedditTrendingPosts('all', 'hour', 10).catch(() => []), // Rising trends
     ]);
     
     // Combine and deduplicate
-    const allPosts = [...hotPosts, ...popularPosts];
+    const allPosts = [...hotPosts, ...popularPosts, ...risingPosts];
     const uniquePosts = Array.from(
       new Map(allPosts.map(post => [post.data.title, post])).values()
     );
@@ -281,20 +282,60 @@ export async function discoverRedditTrends(): Promise<{
       };
     }
     
-    // Transform to trends
-    const trends = qualityPosts.map(transformRedditPostToTrend);
+    // Prepare data for AI analysis
+    const postData = qualityPosts.map(post => ({
+      title: post.data.title,
+      subreddit: post.data.subreddit,
+      score: post.data.score,
+      num_comments: post.data.num_comments,
+    }));
     
-    // Sort by engagement score and take top 25
-    const topTrends = trends
-      .sort((a, b) => (b.engagement_score || 0) - (a.engagement_score || 0))
-      .slice(0, 25);
+    console.log('🤖 Using AI to identify distinct trends from posts...');
     
-    console.log(`💾 Saving ${topTrends.length} top trends to database...`);
+    // Import Gemini API (dynamic import to avoid circular dependencies)
+    const { analyzeRedditPostsForTrends, fallbackTrendExtraction } = await import('./geminiApi');
+    
+    let distinctTrends;
+    
+    try {
+      // Use Gemini AI to analyze and extract distinct trends
+      distinctTrends = await analyzeRedditPostsForTrends(postData);
+    } catch (aiError) {
+      console.warn('⚠️ AI analysis failed, using fallback method:', aiError);
+      // Fallback to basic extraction if AI fails
+      distinctTrends = fallbackTrendExtraction(postData);
+    }
+    
+    console.log(`💎 Identified ${distinctTrends.length} distinct trends`);
+    
+    if (distinctTrends.length === 0) {
+      return {
+        success: false,
+        trendsDiscovered: 0,
+        error: 'No distinct trends identified',
+      };
+    }
+    
+    console.log('🗑️ Clearing old Reddit trends from database...');
+    
+    // Delete old Reddit trends before inserting new ones
+    const { error: deleteError } = await supabase
+      .from('trends')
+      .delete()
+      .eq('source', 'reddit');
+    
+    if (deleteError) {
+      console.warn('⚠️ Error deleting old trends (continuing anyway):', deleteError);
+    } else {
+      console.log('✅ Old Reddit trends cleared');
+    }
+    
+    console.log(`💾 Saving ${distinctTrends.length} distinct trends to database...`);
     
     // Save to database
     const { data, error } = await supabase
       .from('trends')
-      .insert(topTrends)
+      .insert(distinctTrends)
       .select();
     
     if (error) {
@@ -302,7 +343,7 @@ export async function discoverRedditTrends(): Promise<{
       throw error;
     }
     
-    console.log(`✅ Successfully saved ${data?.length || 0} Reddit trends to database`);
+    console.log(`✅ Successfully saved ${data?.length || 0} distinct trends to database`);
     
     return {
       success: true,
