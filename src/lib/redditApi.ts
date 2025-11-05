@@ -9,6 +9,62 @@ import type { Database } from "@/integrations/supabase/types";
 
 type TrendInsert = Database['public']['Tables']['trends']['Insert'];
 
+// Category to subreddit mapping
+export const TREND_CATEGORIES = {
+  all: {
+    name: 'All Categories',
+    subreddits: ['all', 'popular'],
+    description: 'Trending across all of Reddit',
+  },
+  technology: {
+    name: 'Technology',
+    subreddits: ['technology', 'programming', 'artificial', 'machinelearning', 'coding', 'tech'],
+    description: 'Latest in tech, AI, and programming',
+  },
+  business: {
+    name: 'Business',
+    subreddits: ['business', 'entrepreneur', 'startups', 'smallbusiness', 'Entrepreneur', 'finance'],
+    description: 'Business insights and entrepreneurship',
+  },
+  marketing: {
+    name: 'Marketing',
+    subreddits: ['marketing', 'socialmedia', 'advertising', 'SEO', 'PPC', 'content_marketing'],
+    description: 'Marketing strategies and social media',
+  },
+  health: {
+    name: 'Health & Fitness',
+    subreddits: ['Health', 'fitness', 'nutrition', 'Wellness', 'bodyweightfitness', 'running'],
+    description: 'Health, fitness, and wellness trends',
+  },
+  lifestyle: {
+    name: 'Lifestyle',
+    subreddits: ['lifestyle', 'LifeProTips', 'productivity', 'selfimprovement', 'minimalism'],
+    description: 'Life hacks and personal development',
+  },
+  finance: {
+    name: 'Finance & Investing',
+    subreddits: ['investing', 'stocks', 'personalfinance', 'CryptoCurrency', 'wallstreetbets', 'economics'],
+    description: 'Financial markets and investment trends',
+  },
+  gaming: {
+    name: 'Gaming',
+    subreddits: ['gaming', 'Games', 'pcgaming', 'PS5', 'xbox', 'NintendoSwitch'],
+    description: 'Video games and esports',
+  },
+  science: {
+    name: 'Science',
+    subreddits: ['science', 'Physics', 'space', 'Futurology', 'biology', 'chemistry'],
+    description: 'Scientific discoveries and innovation',
+  },
+  entertainment: {
+    name: 'Entertainment',
+    subreddits: ['entertainment', 'movies', 'television', 'Music', 'netflix', 'youtube'],
+    description: 'Movies, TV shows, and pop culture',
+  },
+} as const;
+
+export type TrendCategoryKey = keyof typeof TREND_CATEGORIES;
+
 interface RedditPost {
   data: {
     title: string;
@@ -245,29 +301,39 @@ function filterQualityPosts(posts: RedditPost[]): RedditPost[] {
 
 /**
  * Main function to discover trends from Reddit and save to database
+ * @param categoryKey - The category to fetch trends for (e.g., 'all', 'technology', 'business')
  */
-export async function discoverRedditTrends(): Promise<{
+export async function discoverRedditTrends(categoryKey: TrendCategoryKey = 'all'): Promise<{
   success: boolean;
   trendsDiscovered: number;
   error?: string;
 }> {
   try {
-    console.log('🔍 Fetching trending posts from Reddit...');
+    const category = TREND_CATEGORIES[categoryKey];
+    console.log(`🔍 Fetching trending posts from Reddit for category: ${category.name}...`);
     
-    // Fetch 100 posts from multiple sources for better coverage
-    const [hotPosts, popularPosts, risingPosts] = await Promise.all([
-      fetchRedditTrendingPosts('all', 'day', 50),
-      fetchRedditTrendingPosts('popular', 'day', 40),
-      fetchRedditTrendingPosts('all', 'hour', 10).catch(() => []), // Rising trends
-    ]);
+    // Fetch posts from category-specific subreddits
+    const subredditsToFetch = category.subreddits.slice(0, 3); // Fetch from top 3 subreddits
+    
+    const postPromises = subredditsToFetch.map(async (subreddit, index) => {
+      const limit = index === 0 ? 40 : 30; // More from first subreddit
+      try {
+        return await fetchRedditTrendingPosts(subreddit, 'day', limit);
+      } catch (error) {
+        console.warn(`⚠️ Failed to fetch from r/${subreddit}:`, error);
+        return [];
+      }
+    });
+    
+    const allPostArrays = await Promise.all(postPromises);
+    const allPosts = allPostArrays.flat();
     
     // Combine and deduplicate
-    const allPosts = [...hotPosts, ...popularPosts, ...risingPosts];
     const uniquePosts = Array.from(
       new Map(allPosts.map(post => [post.data.title, post])).values()
     );
     
-    console.log(`📊 Found ${uniquePosts.length} unique posts from Reddit`);
+    console.log(`📊 Found ${uniquePosts.length} unique posts from ${category.name}`);
     
     // Filter for quality
     const qualityPosts = filterQualityPosts(uniquePosts);
@@ -316,26 +382,32 @@ export async function discoverRedditTrends(): Promise<{
       };
     }
     
-    console.log('🗑️ Clearing old Reddit trends from database...');
+    // Add category source to each trend
+    const trendsWithCategory = distinctTrends.map(trend => ({
+      ...trend,
+      trend_category_source: categoryKey,
+    }));
     
-    // Delete old Reddit trends before inserting new ones
+    console.log(`🗑️ Clearing old ${category.name} trends from database...`);
+    
+    // Delete old trends for this specific category before inserting new ones
     const { error: deleteError } = await supabase
       .from('trends')
       .delete()
-      .eq('source', 'reddit');
+      .match({ source: 'reddit', trend_category_source: categoryKey });
     
     if (deleteError) {
       console.warn('⚠️ Error deleting old trends (continuing anyway):', deleteError);
     } else {
-      console.log('✅ Old Reddit trends cleared');
+      console.log(`✅ Old ${category.name} trends cleared`);
     }
     
-    console.log(`💾 Saving ${distinctTrends.length} distinct trends to database...`);
+    console.log(`💾 Saving ${trendsWithCategory.length} distinct trends to database...`);
     
     // Save to database
     const { data, error } = await supabase
       .from('trends')
-      .insert(distinctTrends)
+      .insert(trendsWithCategory as any)
       .select();
     
     if (error) {

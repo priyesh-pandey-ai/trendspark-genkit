@@ -1,18 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
-import { discoverRedditTrends } from "./redditApi";
+import { discoverRedditTrends, type TrendCategoryKey } from "./redditApi";
 
 /**
  * Triggers the discover-trends edge function to fetch fresh trending topics
  * from external APIs (Reddit, Twitter, Google Trends)
+ * @param categoryKey - The category to discover trends for
  * @returns Promise with the result of the trend discovery operation
  */
-export async function triggerTrendDiscovery() {
+export async function triggerTrendDiscovery(categoryKey: TrendCategoryKey = 'all') {
   try {
-    console.log('🚀 Starting trend discovery process...');
+    console.log(`🚀 Starting trend discovery process for category: ${categoryKey}...`);
     
     // First, try to discover trends from Reddit directly
     console.log('📡 Attempting to discover trends from Reddit...');
-    const redditResult = await discoverRedditTrends();
+    const redditResult = await discoverRedditTrends(categoryKey);
     
     console.log('Reddit discovery result:', redditResult);
     
@@ -24,6 +25,7 @@ export async function triggerTrendDiscovery() {
         data: {
           trendsDiscovered: redditResult.trendsDiscovered,
           source: 'reddit',
+          category: categoryKey,
         },
       };
     }
