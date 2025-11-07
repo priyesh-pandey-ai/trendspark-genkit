@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -15,6 +16,7 @@ import {
 import { TrendingUp, Flame, RefreshCw, Sparkles, LogOut, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMockTrends, type Trend } from "@/lib/mockTrends";
+import { TREND_CATEGORIES, type TrendCategoryKey } from "@/lib/redditApi";
 import { triggerTrendDiscovery } from "@/lib/trendDiscovery";
 
 const DiscoverTrends = () => {
@@ -22,6 +24,7 @@ const DiscoverTrends = () => {
   const [filteredTrends, setFilteredTrends] = useState<Trend[]>([]);
   const [loading, setLoading] = useState(true);
   const [discovering, setDiscovering] = useState(false);
+  const [selectedTrendCategory, setSelectedTrendCategory] = useState<TrendCategoryKey>("all");
   const [category, setCategory] = useState("All");
   const [sortBy, setSortBy] = useState("growth_rate");
   const navigate = useNavigate();
@@ -30,7 +33,7 @@ const DiscoverTrends = () => {
   useEffect(() => {
     checkAuth();
     fetchTrends();
-  }, []);
+  }, [selectedTrendCategory]); // Refetch when category changes
 
   useEffect(() => {
     filterAndSortTrends();
@@ -46,24 +49,56 @@ const DiscoverTrends = () => {
   const fetchTrends = async () => {
     setLoading(true);
     try {
-      // Try fetching from database first
+      // Fetch trends filtered by selected category source
       const { data, error } = await supabase
         .from('trends')
         .select('*')
+        .match({ trend_category_source: selectedTrendCategory })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // If no trends in database, use mock data
+      // If no trends in database for this category, auto-discover from Reddit
       if (!data || data.length === 0) {
+        console.log(`No ${selectedTrendCategory} trends in database, auto-discovering from Reddit...`);
+        toast({
+          title: "No trends found",
+          description: `Discovering ${TREND_CATEGORIES[selectedTrendCategory].name} trends...`,
+        });
+        
+        // Trigger auto-discovery for this category
+        const result = await triggerTrendDiscovery(selectedTrendCategory);
+        
+        if (result.success) {
+          // Fetch again after discovery
+          const { data: newData, error: newError } = await supabase
+            .from('trends')
+            .select('*')
+            .match({ trend_category_source: selectedTrendCategory })
+            .order('created_at', { ascending: false });
+          
+          if (!newError && newData && newData.length > 0) {
+            setTrends(newData);
+            toast({
+              title: "✨ Trends discovered!",
+              description: `Loaded ${newData.length} ${TREND_CATEGORIES[selectedTrendCategory].name} trends`,
+            });
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // If auto-discovery failed, fall back to mock data
         const mockTrends = generateMockTrends();
         setTrends(mockTrends);
         toast({
-          title: "Mock trends loaded",
-          description: "Showing demo trending topics",
+          title: "Using demo data",
+          description: "Click 'Discover New Trends' to fetch real trends",
+          variant: "default",
         });
       } else {
         setTrends(data);
+        console.log(`Loaded ${data.length} ${selectedTrendCategory} trends from database`);
       }
     } catch (error: any) {
       console.error("Error fetching trends:", error);
@@ -72,7 +107,7 @@ const DiscoverTrends = () => {
       setTrends(mockTrends);
       toast({
         title: "Using demo data",
-        description: "Showing sample trending topics",
+        description: "Error loading trends. Click 'Discover New Trends' to try again.",
       });
     } finally {
       setLoading(false);
@@ -111,17 +146,18 @@ const DiscoverTrends = () => {
   const handleDiscoverNewTrends = async () => {
     setDiscovering(true);
     try {
+      const categoryName = TREND_CATEGORIES[selectedTrendCategory].name;
       toast({
         title: "Discovering trends...",
-        description: "Fetching latest trending topics from external sources",
+        description: `Fetching latest ${categoryName} trends from Reddit`,
       });
 
-      const result = await triggerTrendDiscovery();
+      const result = await triggerTrendDiscovery(selectedTrendCategory);
 
       if (result.success) {
         toast({
           title: "✨ New trends discovered!",
-          description: `Found ${result.data?.trendsDiscovered || 0} trending topics`,
+          description: `Found ${result.data?.trendsDiscovered || 0} ${categoryName} trends`,
         });
         // Refresh the trends list
         await fetchTrends();
@@ -166,12 +202,22 @@ const DiscoverTrends = () => {
 
   const getSourceBadge = (source: string) => {
     const labels: Record<string, string> = {
-      reddit: "Reddit",
-      twitter: "Twitter",
-      google_trends: "Google Trends",
-      manual: "Manual"
+      reddit: "🔥 Reddit",
+      twitter: "🐦 Twitter",
+      google_trends: "📊 Google Trends",
+      manual: "✏️ Manual"
     };
     return labels[source] || source;
+  };
+
+  const getSourceColor = (source: string) => {
+    const colors: Record<string, string> = {
+      reddit: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+      twitter: "bg-blue-400/10 text-blue-400 border-blue-400/20",
+      google_trends: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+      manual: "bg-gray-500/10 text-gray-500 border-gray-500/20"
+    };
+    return colors[source] || "bg-muted/50";
   };
 
   return (
@@ -198,14 +244,27 @@ const DiscoverTrends = () => {
       {/* Main Content */}
       <main className="container max-w-7xl mx-auto px-4 py-8">
         {/* Page Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             <TrendingUp className="h-8 w-8 text-primary" />
             <h2 className="text-3xl font-bold">Discover Trending Topics</h2>
           </div>
           <p className="text-muted-foreground">
-            Find viral content ideas and generate platform-optimized posts instantly
+            {TREND_CATEGORIES[selectedTrendCategory].description}
           </p>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="mb-6">
+          <Tabs value={selectedTrendCategory} onValueChange={(value) => setSelectedTrendCategory(value as TrendCategoryKey)}>
+            <TabsList className="w-full justify-start overflow-x-auto flex-wrap h-auto">
+              {Object.entries(TREND_CATEGORIES).map(([key, cat]) => (
+                <TabsTrigger key={key} value={key} className="flex-shrink-0">
+                  {cat.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Filters Bar */}
@@ -296,7 +355,7 @@ const DiscoverTrends = () => {
                   <Badge variant="outline" className={getCategoryColor(trend.category)}>
                     {trend.category}
                   </Badge>
-                  <Badge variant="outline" className="bg-muted/50">
+                  <Badge variant="outline" className={getSourceColor(trend.source)}>
                     {getSourceBadge(trend.source)}
                   </Badge>
                 </div>
