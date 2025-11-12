@@ -20,25 +20,25 @@ serve(async (req) => {
 
     console.log('Generating content kit for trend:', trendTitle);
 
-    const prompt = `Using the Voice Card below and the Trend topic, create ${platforms.length} platform-specific posts.
+    const prompt = `Create ${platforms.length} platform-specific social media posts using the voice and style below.
 
-For each platform, output:
-- Hook (≤80 characters, attention-grabbing)
-- Body (≤220 words, engaging and valuable)
-- CTA (clear call-to-action)
-- Hashtags (7-10 relevant hashtags)
-
-Platforms: ${platforms.join(', ')}
-
-Voice Card:
+VOICE CARD:
 ${voiceCard}
 
-Trend Topic: ${trendTitle}
-Niche: ${niche}
+TREND: ${trendTitle}
+NICHE: ${niche}
+PLATFORMS: ${platforms.join(', ')}
 
-Format as JSON array with objects containing: platform, hook, body, cta, hashtags (array of strings).`;
+OUTPUT FORMAT: JSON array with these fields for each platform:
+- platform (string)
+- hook (max 80 chars, attention-grabbing)
+- body (max 220 words)
+- cta (clear call-to-action)
+- hashtags (array of 7-10 hashtags)
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
+Return ONLY the JSON array, no markdown.`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -53,7 +53,7 @@ Format as JSON array with objects containing: platform, hook, body, cta, hashtag
           temperature: 0.7,
           topP: 0.95,
           topK: 40,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
           responseMimeType: "application/json"
         }
       }),
@@ -74,15 +74,73 @@ Format as JSON array with objects containing: platform, hook, body, cta, hashtag
     }
 
     const data = await response.json();
+    
+    console.log('Full Gemini API response:', JSON.stringify(data, null, 2));
+    
+    // Validate Gemini response structure
+    if (!data.candidates || !data.candidates.length) {
+      console.error('Invalid Gemini response structure - no candidates array');
+      
+      // Check for safety filters or other blocking
+      if (data.promptFeedback) {
+        console.error('Prompt feedback:', JSON.stringify(data.promptFeedback));
+        throw new Error(`Content was blocked by safety filters: ${JSON.stringify(data.promptFeedback.blockReason || 'Unknown reason')}`);
+      }
+      
+      throw new Error('Gemini returned an empty response. The content may have been filtered. Please try a different trend topic.');
+    }
+    
+    if (!data.candidates[0].content?.parts?.[0]?.text) {
+      console.error('Missing text in Gemini response:', JSON.stringify(data.candidates[0]));
+      
+      // Check finish reason
+      const finishReason = data.candidates[0].finishReason;
+      if (finishReason === 'MAX_TOKENS') {
+        throw new Error('Response was too long and got cut off. This usually means the voice card is very detailed. Please try again or use a more concise voice card.');
+      }
+      
+      if (finishReason && finishReason !== 'STOP') {
+        throw new Error(`Content generation stopped: ${finishReason}. Please try a different trend topic.`);
+      }
+      
+      throw new Error('Gemini response missing content. Please try again.');
+    }
+    
     let content = data.candidates[0].content.parts[0].text;
+    
+    console.log('Raw Gemini response (first 500 chars):', content.substring(0, 500));
     
     // Extract JSON from markdown code blocks if present
     const jsonMatch = content.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
     if (jsonMatch) {
       content = jsonMatch[1];
     }
-
-    const contentKits = JSON.parse(content);
+    
+    // Clean up common JSON issues
+    content = content.trim();
+    
+    // Try to parse the JSON
+    let contentKits;
+    try {
+      contentKits = JSON.parse(content);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Problematic content (full):', content);
+      
+      // Try to fix common issues: unescaped quotes, newlines in strings
+      try {
+        // Remove any trailing commas before closing brackets
+        let cleaned = content.replace(/,(\s*[}\]])/g, '$1');
+        
+        // Try parsing again
+        contentKits = JSON.parse(cleaned);
+        console.log('Successfully parsed after cleanup');
+      } catch (secondError) {
+        console.error('Still failed after cleanup:', secondError);
+        const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parse error';
+        throw new Error(`Failed to parse Gemini response as JSON: ${errorMsg}. Response: ${content.substring(0, 200)}...`);
+      }
+    }
 
     console.log('Content kit generated successfully');
 
