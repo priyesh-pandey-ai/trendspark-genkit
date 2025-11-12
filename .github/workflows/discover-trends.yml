@@ -13,10 +13,26 @@ jobs:
   discover-trends:
     runs-on: ubuntu-latest
     steps:
+      - name: Check Required Secrets
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::warning::Trend discovery workflow is not configured. Please set the following GitHub secrets:"
+            echo "::warning::  - VITE_SUPABASE_URL: Your Supabase project URL"
+            echo "::warning::  - VITE_SUPABASE_PUBLISHABLE_KEY: Your Supabase publishable key"
+            echo "::warning::See DEPLOYMENT.md for setup instructions."
+            echo ""
+            echo "ℹ️  Skipping trend discovery - secrets not configured"
+            exit 0
+          fi
+          echo "✅ Required secrets are configured"
+      
       - name: Trigger Trend Discovery
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${SUPABASE_URL}/functions/v1/discover-trends" \
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
@@ -30,6 +46,7 @@ jobs:
           
           if [ "$HTTP_CODE" -ne 200 ]; then
             echo "::error::Trend discovery failed with status $HTTP_CODE"
+            echo "::error::Response body: $BODY"
             exit 1
           fi
           

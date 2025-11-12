@@ -1,27 +1,59 @@
 import { supabase } from "@/integrations/supabase/client";
+import { discoverRedditTrends, type TrendCategoryKey } from "./redditApi";
 
 /**
  * Triggers the discover-trends edge function to fetch fresh trending topics
  * from external APIs (Reddit, Twitter, Google Trends)
+ * @param categoryKey - The category to discover trends for
  * @returns Promise with the result of the trend discovery operation
  */
-export async function triggerTrendDiscovery() {
+export async function triggerTrendDiscovery(categoryKey: TrendCategoryKey = 'all') {
   try {
+    console.log(`🚀 Starting trend discovery process for category: ${categoryKey}...`);
+    
+    // First, try to discover trends from Reddit directly
+    console.log('📡 Attempting to discover trends from Reddit...');
+    const redditResult = await discoverRedditTrends(categoryKey);
+    
+    console.log('Reddit discovery result:', redditResult);
+    
+    if (redditResult.success && redditResult.trendsDiscovered > 0) {
+      console.log(`✅ Discovered ${redditResult.trendsDiscovered} trends from Reddit`);
+      
+      return {
+        success: true,
+        data: {
+          trendsDiscovered: redditResult.trendsDiscovered,
+          source: 'reddit',
+          category: categoryKey,
+        },
+      };
+    }
+
+    // If Reddit failed, log the error
+    if (!redditResult.success) {
+      console.error('❌ Reddit discovery failed:', redditResult.error);
+    }
+
+    // Fallback to edge function if Reddit fails or returns no results
+    console.log('⚠️ Falling back to edge function for trend discovery...');
     const { data, error } = await supabase.functions.invoke('discover-trends', {
       method: 'POST',
     });
 
     if (error) {
-      console.error('Error triggering trend discovery:', error);
+      console.error('❌ Error triggering edge function:', error);
       throw error;
     }
+
+    console.log('✅ Edge function response:', data);
 
     return {
       success: true,
       data,
     };
   } catch (error) {
-    console.error('Failed to trigger trend discovery:', error);
+    console.error('❌ Failed to trigger trend discovery:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
