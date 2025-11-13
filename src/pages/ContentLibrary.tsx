@@ -40,6 +40,8 @@ interface ContentKit {
   body: string;
   cta: string;
   hashtags: string[];
+  image_url?: string;
+  image_prompt?: string;
   status: string;
   created_at: string;
   brands: {
@@ -56,6 +58,7 @@ const ContentLibrary = () => {
   const [selectedBrand, setSelectedBrand] = useState<string>("all");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [imageFilter, setImageFilter] = useState<string>("all");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -68,7 +71,7 @@ const ContentLibrary = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [contentKits, searchQuery, selectedBrand, selectedPlatforms, selectedStatus]);
+  }, [contentKits, searchQuery, selectedBrand, selectedPlatforms, selectedStatus, imageFilter]);
 
   const fetchData = async () => {
     try {
@@ -126,6 +129,12 @@ const ContentLibrary = () => {
 
     if (selectedStatus !== "all") {
       filtered = filtered.filter(kit => kit.status === selectedStatus);
+    }
+
+    if (imageFilter === "with-images") {
+      filtered = filtered.filter(kit => kit.image_url);
+    } else if (imageFilter === "without-images") {
+      filtered = filtered.filter(kit => !kit.image_url);
     }
 
     setFilteredKits(filtered);
@@ -215,6 +224,8 @@ const ContentLibrary = () => {
       'Body': kit.body || '',
       'CTA': kit.cta || '',
       'Hashtags': kit.hashtags?.join(' ') || '',
+      'Image URL': kit.image_url || '',
+      'Image Prompt': kit.image_prompt || '',
       'Status': kit.status,
       'Created Date': new Date(kit.created_at).toLocaleDateString()
     }));
@@ -346,8 +357,23 @@ const ContentLibrary = () => {
                 </Select>
               </div>
 
-              {/* Export */}
+              {/* Image Filter */}
               <div className="space-y-2">
+                <Label>Images</Label>
+                <Select value={imageFilter} onValueChange={setImageFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All content" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All content</SelectItem>
+                    <SelectItem value="with-images">With images</SelectItem>
+                    <SelectItem value="without-images">Without images</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Export */}
+              <div className="space-y-2 lg:col-start-4">
                 <Label>Export</Label>
                 <Button onClick={exportToCSV} variant="outline" className="w-full">
                   <Download className="h-4 w-4 mr-2" />
@@ -396,6 +422,7 @@ const ContentLibrary = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Image</TableHead>
                   <TableHead>Trend Title</TableHead>
                   <TableHead>Brand</TableHead>
                   <TableHead>Platform</TableHead>
@@ -407,6 +434,19 @@ const ContentLibrary = () => {
               <TableBody>
                 {filteredKits.map((kit) => (
                   <TableRow key={kit.id}>
+                    <TableCell>
+                      {kit.image_url ? (
+                        <img 
+                          src={kit.image_url} 
+                          alt="Content thumbnail" 
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                          No image
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="font-medium">{kit.trend_title}</TableCell>
                     <TableCell>{kit.brands.name}</TableCell>
                     <TableCell>{kit.platform}</TableCell>

@@ -20,9 +20,18 @@ serve(async (req) => {
 
     console.log('Generating content kit for trend:', trendTitle);
 
-    const prompt = `Create ${platforms.length} platform-specific social media posts using the voice and style below.
+    const prompt = `Using the Voice Card below and the Trend topic, create ${platforms.length} UNIQUE platform-specific posts.
 
-VOICE CARD:
+IMPORTANT: Create ONE post for EACH of these platforms: ${platforms.join(', ')}
+Do NOT repeat content. Each platform should have DIFFERENT content optimized for that platform's audience.
+
+For each platform, output:
+- Hook (≤80 characters, attention-grabbing)
+- Body (≤220 words, engaging and valuable, UNIQUE to this platform)
+- CTA (clear call-to-action)
+- Hashtags (7-10 relevant hashtags)
+
+Voice Card:
 ${voiceCard}
 
 TREND: ${trendTitle}
@@ -36,7 +45,14 @@ OUTPUT FORMAT: JSON array with these fields for each platform:
 - cta (clear call-to-action)
 - hashtags (array of 7-10 hashtags)
 
-Return ONLY the JSON array, no markdown.`;
+CRITICAL: Return exactly ${platforms.length} objects in a JSON array, one per platform: ${platforms.join(', ')}
+Format as JSON array with objects containing: platform, hook, body, cta, hashtags (array of strings).
+
+Example structure:
+[
+  {"platform": "Instagram", "hook": "...", "body": "...", "cta": "...", "hashtags": [...]},
+  {"platform": "LinkedIn", "hook": "...", "body": "...", "cta": "...", "hashtags": [...]}
+]`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',

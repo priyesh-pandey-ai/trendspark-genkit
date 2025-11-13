@@ -59,6 +59,8 @@ export type Database = {
           hashtags: string[] | null
           hook: string | null
           id: string
+          image_prompt: string | null
+          image_url: string | null
           platform: string
           status: string | null
           trend_title: string
@@ -72,6 +74,8 @@ export type Database = {
           hashtags?: string[] | null
           hook?: string | null
           id?: string
+          image_prompt?: string | null
+          image_url?: string | null
           platform: string
           status?: string | null
           trend_title: string
@@ -85,6 +89,8 @@ export type Database = {
           hashtags?: string[] | null
           hook?: string | null
           id?: string
+          image_prompt?: string | null
+          image_url?: string | null
           platform?: string
           status?: string | null
           trend_title?: string
