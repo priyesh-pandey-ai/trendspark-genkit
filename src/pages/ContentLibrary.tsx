@@ -28,8 +28,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Search, Download, Eye, Edit, Copy, Trash2, MoreVertical } from "lucide-react";
+import { ArrowLeft, Search, Download, Eye, Edit, Copy, Trash2, MoreVertical, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CSVUploadBulkPoster from "@/components/CSVUploadBulkPoster";
 
 interface ContentKit {
   id: string;
@@ -374,7 +375,7 @@ const ContentLibrary = () => {
 
               {/* Export */}
               <div className="space-y-2 lg:col-start-4">
-                <Label>Export</Label>
+                <Label>Actions</Label>
                 <Button onClick={exportToCSV} variant="outline" className="w-full">
                   <Download className="h-4 w-4 mr-2" />
                   Export to CSV
@@ -382,26 +383,34 @@ const ContentLibrary = () => {
               </div>
             </div>
 
-            {/* Platform Checkboxes */}
-            <div className="space-y-2">
-              <Label>Platforms</Label>
-              <div className="flex flex-wrap gap-4">
-                {platforms.map(platform => (
-                  <div key={platform} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`platform-${platform}`}
-                      checked={selectedPlatforms.includes(platform)}
-                      onCheckedChange={() => togglePlatform(platform)}
-                    />
-                    <label
-                      htmlFor={`platform-${platform}`}
-                      className="text-sm font-medium cursor-pointer"
-                    >
-                      {platform}
-                    </label>
-                  </div>
-                ))}
+            {/* Platform Checkboxes & Social Posting */}
+            <div className="flex justify-between items-start gap-4">
+              <div className="space-y-2 flex-1">
+                <Label>Platforms</Label>
+                <div className="flex flex-wrap gap-4">
+                  {platforms.map(platform => (
+                    <div key={platform} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`platform-${platform}`}
+                        checked={selectedPlatforms.includes(platform)}
+                        onCheckedChange={() => togglePlatform(platform)}
+                      />
+                      <label
+                        htmlFor={`platform-${platform}`}
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        {platform}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
+              {filteredKits.length > 0 && (
+                <div className="space-y-2">
+                  <Label>&nbsp;</Label>
+                  <CSVUploadBulkPoster contentKitIds={filteredKits.map(k => k.id)} />
+                </div>
+              )}
             </div>
           </div>
         </Card>

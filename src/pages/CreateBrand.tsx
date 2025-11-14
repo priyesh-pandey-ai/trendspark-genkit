@@ -8,10 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ModelSelector from "@/components/ModelSelector";
 
 const CreateBrand = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("gemini-2.0-flash-exp");
   const [brandData, setBrandData] = useState({
     name: "",
     niche: "",
@@ -63,7 +65,8 @@ const CreateBrand = () => {
       const { data: voiceData, error: voiceError } = await supabase.functions.invoke('generate-voice-card', {
         body: {
           samplePosts: [brandData.samplePost1, brandData.samplePost2].filter(Boolean),
-          niche: brandData.niche
+          niche: brandData.niche,
+          modelId: selectedModel
         }
       });
 
@@ -146,6 +149,14 @@ const CreateBrand = () => {
                   value={brandData.niche}
                   onChange={(e) => setBrandData({ ...brandData, niche: e.target.value })}
                   className="bg-background"
+                />
+              </div>
+
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <ModelSelector
+                  value={selectedModel}
+                  onChange={setSelectedModel}
+                  showDetails={true}
                 />
               </div>
 
