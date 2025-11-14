@@ -13,25 +13,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TrendingUp, Flame, RefreshCw, Sparkles, LogOut, Zap } from "lucide-react";
+import { TrendingUp, Flame, RefreshCw, Sparkles, LogOut, Zap, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMockTrends, type Trend } from "@/lib/mockTrends";
 import { TREND_CATEGORIES, type TrendCategoryKey } from "@/lib/redditApi";
 import { triggerTrendDiscovery } from "@/lib/trendDiscovery";
+import { rankTrendsByBrandFit } from "@/lib/trendMatching";
+
+interface Brand {
+  id: string;
+  name: string;
+  niche?: string;
+}
+
+interface RankedTrend extends Trend {
+  alignmentScore?: number;
+  brandAlignmentScore?: number;
+}
 
 const DiscoverTrends = () => {
   const [trends, setTrends] = useState<Trend[]>([]);
   const [filteredTrends, setFilteredTrends] = useState<Trend[]>([]);
+  const [top5Trends, setTop5Trends] = useState<Trend[]>([]);
+  const [brandAlignedTrends, setBrandAlignedTrends] = useState<RankedTrend[]>([]);
   const [loading, setLoading] = useState(true);
   const [discovering, setDiscovering] = useState(false);
   const [selectedTrendCategory, setSelectedTrendCategory] = useState<TrendCategoryKey>("all");
   const [category, setCategory] = useState("All");
   const [sortBy, setSortBy] = useState("growth_rate");
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<string>("");
+  const [loadingBrands, setLoadingBrands] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     checkAuth();
+    fetchBrands();
     fetchTrends();
   }, [selectedTrendCategory]); // Refetch when category changes
 
@@ -39,10 +57,65 @@ const DiscoverTrends = () => {
     filterAndSortTrends();
   }, [trends, category, sortBy]);
 
+  useEffect(() => {
+    // Calculate top 5 trends across all categories
+    if (trends.length > 0) {
+      const sorted = [...trends]
+        .sort((a, b) => {
+          // Sort by engagement score first, then growth rate
+          if (b.engagement_score !== a.engagement_score) {
+            return b.engagement_score - a.engagement_score;
+          }
+          return b.growth_rate - a.growth_rate;
+        })
+        .slice(0, 5);
+      setTop5Trends(sorted);
+    }
+  }, [trends]);
+
+  useEffect(() => {
+    // Update brand-aligned trends when trends or selected brand changes
+    if (selectedBrand && trends.length > 0) {
+      try {
+        const selectedBrandData = brands.find(b => b.id === selectedBrand);
+        if (selectedBrandData?.niche) {
+          const ranked = rankTrendsByBrandFit(trends, selectedBrandData.niche, 10);
+          setBrandAlignedTrends(ranked as RankedTrend[]);
+        }
+      } catch (error) {
+        console.error("Error ranking brand-aligned trends:", error);
+        setBrandAlignedTrends([]);
+      }
+    } else {
+      setBrandAlignedTrends([]);
+    }
+  }, [selectedBrand, brands, trends]);
+
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       navigate('/auth');
+    }
+  };
+
+  const fetchBrands = async () => {
+    setLoadingBrands(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from('brands')
+        .select('id, name, niche')
+        .eq('user_id', session.user.id);
+
+      if (error) throw error;
+      
+      setBrands(data || []);
+    } catch (error: any) {
+      console.error("Error fetching brands:", error);
+    } finally {
+      setLoadingBrands(false);
     }
   };
 
@@ -220,6 +293,13 @@ const DiscoverTrends = () => {
     return colors[source] || "bg-muted/50";
   };
 
+  const getAlignmentColor = (score: number) => {
+    if (score >= 80) return "bg-green-500/10 text-green-600";
+    if (score >= 60) return "bg-blue-500/10 text-blue-600";
+    if (score >= 40) return "bg-yellow-500/10 text-yellow-600";
+    return "bg-orange-500/10 text-orange-600";
+  };
+
   return (
     <div className="min-h-screen gradient-subtle">
       {/* Header */}
@@ -253,6 +333,58 @@ const DiscoverTrends = () => {
             {TREND_CATEGORIES[selectedTrendCategory].description}
           </p>
         </div>
+
+        {/* Top 5 Trending Topics Section */}
+        {top5Trends.length > 0 && (
+          <div className="mb-8 p-6 bg-gradient-to-r from-slate-500/5 via-slate-500/10 to-slate-500/5 rounded-lg border border-slate-500/20">
+            <div className="flex items-center gap-3 mb-6">
+              <Flame className="h-7 w-7 text-slate-600" />
+              <h3 className="text-2xl font-bold text-slate-700">⭐ Top 5 Trending Topics</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {top5Trends.map((trend, index) => (
+                <Card
+                  key={`top5-${trend.id}-${index}`}
+                  className="p-4 border-2 border-slate-300/40 bg-gradient-to-b from-slate-50/60 to-slate-50/30 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-4xl font-black text-slate-600">#{index + 1}</div>
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="text-xs font-semibold text-green-700 bg-green-100/70 px-2 py-1 rounded">
+                        +{trend.growth_rate}%
+                      </div>
+                      <div className="text-xs font-semibold text-slate-700 bg-slate-200/70 px-2 py-1 rounded">
+                        {trend.engagement_score} eng
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <h4 className="text-lg font-bold text-slate-800 mb-2 line-clamp-2">{trend.topic}</h4>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                    {trend.description}
+                  </p>
+
+                  <div className="flex gap-2 mb-3">
+                    <Badge variant="outline" className="text-xs bg-slate-100/60 text-slate-700 border-slate-300">
+                      {trend.category}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs bg-slate-100/60 text-slate-700 border-slate-300">
+                      {getSourceBadge(trend.source)}
+                    </Badge>
+                  </div>
+
+                  <Button
+                    onClick={() => handleGenerateContent(trend)}
+                    size="sm"
+                    className="w-full bg-slate-600 hover:bg-slate-700 text-white text-xs"
+                  >
+                    Generate
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Category Tabs */}
         <div className="mb-6">
@@ -307,6 +439,92 @@ const DiscoverTrends = () => {
               <SelectItem value="latest">Latest</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={selectedBrand || "none"} onValueChange={(value) => setSelectedBrand(value === "none" ? "" : value)}>
+            <SelectTrigger className="sm:w-[220px] w-full">
+              <SelectValue placeholder="Select your brand..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No Brand Selected</SelectItem>
+              {brands.map(brand => (
+                <SelectItem key={brand.id} value={String(brand.id)}>
+                  {brand.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Brand-Aligned Trends Section */}
+        {selectedBrand && brandAlignedTrends.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-4">
+              <Award className="h-6 w-6 text-amber-500" />
+              <h3 className="text-2xl font-bold">Top Trends for Your Brand</h3>
+            </div>
+            <p className="text-muted-foreground mb-4">
+              These trends are aligned with your {brands.find(b => b.id === selectedBrand)?.name} brand ({brands.find(b => b.id === selectedBrand)?.niche})
+            </p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {brandAlignedTrends.slice(0, 10).map((trend, index) => {
+                try {
+                  return (
+                    <Card
+                      key={`brand-${trend.id}-${index}`}
+                      className="p-6 border-2 border-amber-500/20 bg-gradient-to-br from-amber-50/50 to-transparent hover:shadow-glow hover:scale-[1.02] transition-all duration-300"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="text-3xl font-bold text-amber-600">#{index + 1}</div>
+                        <Badge className={`${getAlignmentColor(trend.brandAlignmentScore || 0)} font-semibold`}>
+                          {trend.brandAlignmentScore || 0}% Match
+                        </Badge>
+                      </div>
+                      
+                      <h3 className="text-lg font-bold mb-2">{trend.topic}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+                        {trend.description}
+                      </p>
+
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <Badge variant="outline" className={getCategoryColor(trend.category)}>
+                          {trend.category}
+                        </Badge>
+                        <Badge variant="outline" className={getSourceColor(trend.source)}>
+                          {getSourceBadge(trend.source)}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center gap-4 mb-4 text-sm">
+                        <div className="flex items-center gap-1 text-green-500">
+                          <TrendingUp className="h-4 w-4" />
+                          <span className="font-semibold">+{trend.growth_rate}%</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-orange-500">
+                          <Flame className="h-4 w-4" />
+                          <span className="font-semibold">{trend.engagement_score}</span>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={() => handleGenerateContent(trend)}
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                      >
+                        Generate Content
+                      </Button>
+                    </Card>
+                  );
+                } catch (err) {
+                  console.error("Error rendering brand trend card:", err, trend);
+                  return null;
+                }
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* All Trends Section Header */}
+        <div className="mb-4">
+          <h3 className="text-xl font-bold">All Trending Topics</h3>
         </div>
 
         {/* Trends Grid */}
