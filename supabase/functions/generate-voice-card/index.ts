@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { samplePosts, niche, modelId = 'gemini-1.5-flash' } = await req.json();
+    const { samplePosts, niche, modelId = 'gemini-2.0-flash-lite' } = await req.json();
     
     console.log('Generating voice card for niche:', niche, 'using model:', modelId);
 

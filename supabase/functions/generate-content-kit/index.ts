@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { voiceCard, trendTitle, platforms, niche, modelId = 'gemini-1.5-flash' } = await req.json();
+    const { voiceCard, trendTitle, platforms, niche, modelId = 'gemini-2.0-flash-lite' } = await req.json();
 
     console.log('Generating content kit for trend:', trendTitle, 'using model:', modelId);
 

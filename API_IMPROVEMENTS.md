@@ -11,7 +11,7 @@ This document summarizes the API improvements made to ensure proper functionalit
 **After:** Supports both Google Gemini and Groq (Llama/Mixtral) APIs
 
 **Changes:**
-- Added `modelId` parameter (defaults to `gemini-1.5-flash`)
+- Added `modelId` parameter (defaults to `gemini-2.0-flash-lite`)
 - Implemented `generateWithGemini()` function with:
   - Retry logic (3 attempts with exponential backoff)
   - Comprehensive error handling
@@ -28,7 +28,7 @@ This document summarizes the API improvements made to ensure proper functionalit
 ```typescript
 // Gemini models
 const result = await generateContentKit({
-  modelId: 'gemini-1.5-flash',  // or 'gemini-1.5-pro', 'gemini-2.0-flash-exp'
+  modelId: 'gemini-2.0-flash-lite',  // or 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'
   voiceCard,
   trendTitle,
   platforms,
@@ -52,7 +52,7 @@ const result = await generateContentKit({
 - Different capabilities than documented
 - Potential deprecation
 
-**Solution:** Changed default to `gemini-1.5-flash` (production-ready)
+**Solution:** Changed default to `gemini-2.0-flash-lite` (production-ready)
 
 **Files Updated:**
 - `supabase/functions/generate-content-kit/index.ts`
@@ -61,9 +61,10 @@ const result = await generateContentKit({
 - `src/types/models.ts`
 
 **Model Priority:**
-1. **Default (Production):** `gemini-1.5-flash` - Stable, free, production-ready
-2. **High Quality:** `gemini-1.5-pro` - Best quality, paid tier
-3. **Experimental:** `gemini-2.0-flash-exp` - Latest features, may be unstable
+1. **Default (Production):** `gemini-2.0-flash-lite` - Fast, free, production-ready
+2. **Stable Alternative:** `gemini-1.5-flash` - Stable, free
+3. **High Quality:** `gemini-1.5-pro` - Best quality, paid tier
+4. **Experimental:** `gemini-2.0-flash-exp` - Latest features, may be unstable
 
 ### 3. Pollinations.ai API Updates
 
@@ -89,7 +90,8 @@ const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${
 ### 4. Documentation Updates
 
 Updated `MULTI_MODEL_SETUP.md` to reflect:
-- `gemini-1.5-flash` as the recommended default model
+- `gemini-2.0-flash-lite` as the recommended default model
+- `gemini-1.5-flash` available as stable alternative
 - `gemini-2.0-flash-exp` available as experimental option
 - Updated comparison tables and usage recommendations
 
@@ -132,7 +134,7 @@ curl -X POST https://your-project.supabase.co/functions/v1/generate-content-kit 
   -H "Authorization: Bearer YOUR_ANON_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "modelId": "gemini-1.5-flash",
+    "modelId": "gemini-2.0-flash-lite",
     "voiceCard": "Test voice card",
     "trendTitle": "AI Revolution",
     "platforms": ["Instagram", "LinkedIn"],

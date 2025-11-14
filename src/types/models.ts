@@ -25,12 +25,29 @@ export interface ModelConfig {
 
 export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   // Google Gemini Models
+  "gemini-2.0-flash-lite": {
+    id: "gemini-2.0-flash-lite",
+    provider: "gemini",
+    name: "gemini-2.0-flash-lite",
+    displayName: "Google Gemini 2.0 Flash Lite",
+    description: "Fast, efficient production model ideal for brand voice generation. Free tier available.",
+    icon: "🔵",
+    maxTokens: 4096,
+    costPer1kTokens: 0,
+    speedScore: 5,
+    qualityScore: 4,
+    capabilities: {
+      textGeneration: true,
+      imageAnalysis: false,
+      codeGeneration: true,
+    },
+  },
   "gemini-1.5-flash": {
     id: "gemini-1.5-flash",
     provider: "gemini",
     name: "gemini-1.5-flash",
     displayName: "Google Gemini 1.5 Flash",
-    description: "Fast, efficient production model ideal for brand voice generation. Free tier available.",
+    description: "Stable production model. Free tier available.",
     icon: "🔵",
     maxTokens: 4096,
     costPer1kTokens: 0,
