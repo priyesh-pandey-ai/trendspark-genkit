@@ -30,7 +30,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, Search, Download, Eye, Edit, Copy, Trash2, MoreVertical, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ErrorModal from "@/components/ErrorModal";
 import CSVUploadBulkPoster from "@/components/CSVUploadBulkPoster";
+import { isRateLimitError, normalizeError, formatErrorDisplay } from "@/lib/errorHandler";
 
 interface ContentKit {
   id: string;
@@ -60,6 +62,8 @@ const ContentLibrary = () => {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [imageFilter, setImageFilter] = useState<string>("all");
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; description: string; details?: string; isRateLimit: boolean; showRetry: boolean } | null>(null);
+  const [retryFunction, setRetryFunction] = useState<(() => void) | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -99,11 +103,28 @@ const ContentLibrary = () => {
       setContentKits(kitsResult.data || []);
       setBrands(brandsResult.data || []);
     } catch (error: any) {
-      toast({
-        title: "Error fetching content",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Check for rate limit error
+      const isRateLimit = isRateLimitError(error) || error?.status === 429;
+      
+      // Show error modal for rate limit errors
+      if (isRateLimit) {
+        const displayError = formatErrorDisplay(normalizeError(error));
+        setErrorModal({
+          isOpen: true,
+          title: displayError.title,
+          description: displayError.description,
+          details: displayError.details,
+          isRateLimit: true,
+          showRetry: true,
+        });
+        setRetryFunction(() => fetchData);
+      } else {
+        toast({
+          title: "Error fetching content",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -505,6 +526,24 @@ const ContentLibrary = () => {
           </Card>
         )}
       </main>
+
+      {/* Error Modal */}
+      {errorModal && (
+        <ErrorModal
+          isOpen={errorModal.isOpen}
+          title={errorModal.title}
+          description={errorModal.description}
+          errorDetails={errorModal.details}
+          isRateLimit={errorModal.isRateLimit}
+          onClose={() => setErrorModal(null)}
+          onRetry={retryFunction ? () => {
+            setErrorModal(null);
+            retryFunction();
+          } : undefined}
+          showRetry={errorModal.showRetry}
+          retryLabel="Try Again"
+        />
+      )}
     </div>
   );
 };
