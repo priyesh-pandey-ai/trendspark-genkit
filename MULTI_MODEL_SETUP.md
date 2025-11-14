@@ -7,8 +7,10 @@ TrendSpark now supports **3 AI model providers** with **6+ models** for flexible
 ### Supported Providers & Models
 
 #### 🔵 **Google Gemini** (Free tier available)
-- `gemini-2.0-flash-exp` - Fast, efficient, free (default)
+- `gemini-2.0-flash-lite` - Fast, efficient, free (default, production-ready)
 - `gemini-1.5-pro` - High quality, paid tier
+- `gemini-1.5-flash` - Stable production model
+- `gemini-2.0-flash-exp` - Experimental 2.0 features (may have different behavior)
 
 #### 🦙 **Groq Llama** (Ultra-fast inference)
 - `llama-3.1-70b-versatile` - Powerful, 70B parameters
@@ -105,10 +107,11 @@ npx supabase secrets set GROQ_API_KEY=your-key
 
 | Use Case | Recommended Model | Reason |
 |----------|-------------------|--------|
-| **Quick testing** | Gemini 2.0 Flash | Free, fast, reliable |
+| **Quick testing** | Gemini 2.0 Flash Lite | Free, fast, production-ready |
 | **High quality** | Gemini 1.5 Pro | Best quality, context-aware |
 | **Speed & cost** | Groq Llama 3.1 8B | Ultra-fast, cheap |
 | **Complex content** | Groq Llama 3.1 70B | More powerful |
+| **Experimental** | Gemini 2.0 Flash Exp | Latest features, may be unstable |
 | **Enterprise** | Vertex AI Gemini Pro | GCP integration, SLA |
 
 ---
@@ -121,7 +124,9 @@ npx supabase secrets set GROQ_API_KEY=your-key
 ┌─────────────────────────┬───────┬─────────┬────────────┬──────────┐
 │ Model                   │ Speed │ Quality │ Cost (1K)  │ Max Tokens│
 ├─────────────────────────┼───────┼─────────┼────────────┼──────────┤
-│ Gemini 2.0 Flash        │ ⭐⭐⭐⭐⭐ │ ⭐⭐⭐⭐  │ Free       │ 4K       │
+│ Gemini 2.0 Flash Lite   │ ⭐⭐⭐⭐⭐ │ ⭐⭐⭐⭐  │ Free       │ 4K       │
+│ Gemini 1.5 Flash        │ ⭐⭐⭐⭐⭐ │ ⭐⭐⭐⭐  │ Free       │ 4K       │
+│ Gemini 2.0 Flash (Exp)  │ ⭐⭐⭐⭐⭐ │ ⭐⭐⭐⭐  │ Free       │ 4K       │
 │ Gemini 1.5 Pro          │ ⭐⭐⭐⭐  │ ⭐⭐⭐⭐⭐ │ $0.0075    │ 8K       │
 │ Groq Llama 3.1 70B      │ ⭐⭐⭐⭐⭐ │ ⭐⭐⭐⭐  │ $0.0002    │ 8K       │
 │ Groq Llama 3.1 8B       │ ⭐⭐⭐⭐⭐ │ ⭐⭐⭐   │ $0.0001    │ 8K       │
@@ -140,7 +145,9 @@ Assuming **~1000 tokens** per voice card:
 
 | Model | Cost per Voice Card | Cost for 100 Cards |
 |-------|----------------------|--------------------|
-| Gemini 2.0 Flash | **Free** | **Free** |
+| Gemini 2.0 Flash Lite | **Free** | **Free** |
+| Gemini 1.5 Flash | **Free** | **Free** |
+| Gemini 2.0 Flash Exp | **Free** | **Free** |
 | Gemini 1.5 Pro | $0.0075 | $0.75 |
 | Groq Llama 70B | $0.0002 | $0.02 |
 | Groq Llama 8B | $0.0001 | $0.01 |
@@ -237,8 +244,8 @@ if (modelId.includes('claude')) {
 - Good for: Brand voice that needs to be perfect, premium clients
 
 ### For Best Cost
-- Use **Gemini 2.0 Flash** (free tier)
-- Good for: Testing, demos, low-budget projects
+- Use **Gemini 2.0 Flash Lite** (free tier, production-ready)
+- Good for: Testing, demos, low-budget projects, production use
 
 ### Balanced Choice
 - Use **Groq Llama 3.1 70B**

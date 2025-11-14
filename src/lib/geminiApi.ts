@@ -41,7 +41,7 @@ export async function analyzeRedditPostsForTrends(
   try {
     // Initialize the Gemini API
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     // Prepare post data for analysis
     const postSummaries = posts.map((post, idx) => ({
