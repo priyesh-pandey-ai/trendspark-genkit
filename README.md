@@ -93,6 +93,29 @@ The application includes an automated trend discovery system that fetches trendi
 
 For detailed setup instructions, see [Trend Discovery Documentation](supabase/functions/discover-trends/README.md).
 
+## n8n Workflow Integration
+
+The application supports triggering n8n workflows from the Content Library to automate content distribution.
+
+### Setup n8n Integration
+
+1. **Create n8n Webhook**:
+   - Set up a webhook in your n8n instance
+   - Configure it to receive POST requests with CSV content data
+   - Copy the webhook URL
+
+2. **Configure GitHub Secret**:
+   - Go to your repository → Settings → Secrets and variables → Actions
+   - Add a new repository secret: `VITE_N8N_WEBHOOK_URL`
+   - Set the value to your n8n webhook URL
+   - **Note**: This secret must be configured in the Azure Static Web Apps workflow to be available in the built application
+
+3. **Using the Integration**:
+   - Navigate to Content Library
+   - Apply filters to select the content you want to send
+   - Click "Trigger n8n Workflow" button
+   - The selected content will be sent as CSV data to your n8n webhook
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/120e73e4-1bb3-4e63-acb7-418cd94526fe) and click on Share -> Publish.
