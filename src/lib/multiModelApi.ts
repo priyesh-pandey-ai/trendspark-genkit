@@ -4,6 +4,7 @@
  */
 
 import { MODEL_CONFIGS, ModelRequest, ModelResponse, AIModelProvider } from "@/types/models";
+import { isRateLimitError } from "@/lib/errorHandler";
 
 /**
  * Route request to appropriate AI model provider
@@ -27,6 +28,15 @@ export async function callAIModel(request: ModelRequest): Promise<ModelResponse>
     }
   } catch (error) {
     console.error(`Error calling ${model.provider} model ${request.modelId}:`, error);
+    
+    // Enhance rate limit errors with clear identification
+    if (isRateLimitError(error)) {
+      const rateLimitError = new Error('Rate limit exceeded. Please try again in a moment.');
+      (rateLimitError as any).status = 429;
+      (rateLimitError as any).isRateLimit = true;
+      throw rateLimitError;
+    }
+    
     throw error;
   }
 }
@@ -64,6 +74,15 @@ async function callGeminiModel(request: ModelRequest): Promise<ModelResponse> {
 
   if (!response.ok) {
     const error = await response.text();
+    
+    // Handle rate limit errors specifically
+    if (response.status === 429) {
+      const rateLimitError = new Error('API Rate limit exceeded. Please try again in a moment.');
+      (rateLimitError as any).status = 429;
+      (rateLimitError as any).isRateLimit = true;
+      throw rateLimitError;
+    }
+    
     throw new Error(`Gemini API error: ${response.status} - ${error}`);
   }
 
@@ -110,6 +129,15 @@ async function callGroqModel(request: ModelRequest): Promise<ModelResponse> {
 
   if (!response.ok) {
     const error = await response.text();
+    
+    // Handle rate limit errors specifically
+    if (response.status === 429) {
+      const rateLimitError = new Error('Groq API rate limit exceeded. Please try again in a moment.');
+      (rateLimitError as any).status = 429;
+      (rateLimitError as any).isRateLimit = true;
+      throw rateLimitError;
+    }
+    
     throw new Error(`Groq API error: ${response.status} - ${error}`);
   }
 

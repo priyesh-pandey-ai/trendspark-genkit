@@ -4,6 +4,7 @@
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { isRateLimitError } from "@/lib/errorHandler";
 
 interface RedditPostData {
   title: string;
@@ -123,6 +124,15 @@ Return exactly 15 trends or fewer if there aren't enough distinct topics. NO mar
     return distinctTrends;
   } catch (error) {
     console.error('❌ Error analyzing posts with Gemini:', error);
+    
+    // Check if it's a rate limit error
+    if (isRateLimitError(error)) {
+      const rateLimitError = new Error('Gemini API rate limit exceeded. Please wait a moment and try again.');
+      (rateLimitError as any).status = 429;
+      (rateLimitError as any).isRateLimit = true;
+      throw rateLimitError;
+    }
+    
     throw error;
   }
 }

@@ -8,8 +8,10 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Sparkles, Copy, Download, Library, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ErrorModal from "@/components/ErrorModal";
 import PostPreview from "@/components/PostPreview";
 import ModelSelector from "@/components/ModelSelector";
+import { isRateLimitError, normalizeError, formatErrorDisplay } from "@/lib/errorHandler";
 
 interface Brand {
   id: string;
@@ -42,6 +44,8 @@ const Generate = () => {
   const [contentKits, setContentKits] = useState<ContentKit[]>([]);
   const [generateImages, setGenerateImages] = useState(true);
   const [imageGenerating, setImageGenerating] = useState<{ [key: number]: boolean }>({});
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; description: string; details?: string; isRateLimit: boolean; showRetry: boolean } | null>(null);
+  const [retryFunction, setRetryFunction] = useState<(() => void) | null>(null);
 
   const availablePlatforms = ["Instagram", "LinkedIn", "Twitter", "Facebook", "TikTok"];
 
@@ -240,11 +244,21 @@ const Generate = () => {
       });
     } catch (error: any) {
       console.error('Error generating content:', error);
-      toast({
-        title: "Error generating content",
-        description: error.message,
-        variant: "destructive",
+      
+      // Check for rate limit error
+      const isRateLimit = isRateLimitError(error) || error?.status === 429 || error?.isRateLimit;
+      
+      // Show error modal instead of toast for better visibility
+      const displayError = formatErrorDisplay(normalizeError(error));
+      setErrorModal({
+        isOpen: true,
+        title: displayError.title,
+        description: displayError.description,
+        details: displayError.details,
+        isRateLimit,
+        showRetry: true,
       });
+      setRetryFunction(() => handleGenerate);
     } finally {
       setLoading(false);
     }
@@ -539,6 +553,24 @@ const Generate = () => {
           </div>
         </div>
       </main>
+
+      {/* Error Modal */}
+      {errorModal && (
+        <ErrorModal
+          isOpen={errorModal.isOpen}
+          title={errorModal.title}
+          description={errorModal.description}
+          errorDetails={errorModal.details}
+          isRateLimit={errorModal.isRateLimit}
+          onClose={() => setErrorModal(null)}
+          onRetry={retryFunction ? () => {
+            setErrorModal(null);
+            retryFunction();
+          } : undefined}
+          showRetry={errorModal.showRetry}
+          retryLabel="Try Again"
+        />
+      )}
     </div>
   );
 };
