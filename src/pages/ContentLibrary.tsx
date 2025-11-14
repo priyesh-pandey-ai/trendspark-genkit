@@ -28,7 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, Search, Download, Eye, Edit, Copy, Trash2, MoreVertical, Share2 } from "lucide-react";
+import { ArrowLeft, Search, Download, Eye, Edit, Copy, Trash2, MoreVertical, Share2, Zap, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ErrorModal from "@/components/ErrorModal";
 import CSVUploadBulkPoster from "@/components/CSVUploadBulkPoster";
@@ -64,6 +64,7 @@ const ContentLibrary = () => {
   const [imageFilter, setImageFilter] = useState<string>("all");
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; description: string; details?: string; isRateLimit: boolean; showRetry: boolean } | null>(null);
   const [retryFunction, setRetryFunction] = useState<(() => void) | null>(null);
+  const [isLoadingN8n, setIsLoadingN8n] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -272,6 +273,88 @@ const ContentLibrary = () => {
     });
   };
 
+  const triggerN8nWorkflow = async () => {
+    if (filteredKits.length === 0) {
+      toast({
+        title: "No content to send",
+        description: "Apply filters to show content",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingN8n(true);
+
+    try {
+      // Convert to CSV format (reuse existing logic)
+      const csv = filteredKits.map(kit => ({
+        'Brand Name': kit.brands.name,
+        'Trend Title': kit.trend_title,
+        'Platform': kit.platform,
+        'Hook': kit.hook || '',
+        'Body': kit.body || '',
+        'CTA': kit.cta || '',
+        'Hashtags': kit.hashtags?.join(' ') || '',
+        'Image URL': kit.image_url || '',
+        'Image Prompt': kit.image_prompt || '',
+        'Status': kit.status,
+        'Created Date': new Date(kit.created_at).toLocaleDateString()
+      }));
+
+      const headers = Object.keys(csv[0]).join(',');
+      const rows = csv.map(row => 
+        Object.values(row).map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+      );
+      const csvContent = [headers, ...rows].join('\n');
+
+      // Get n8n webhook URL from environment variable
+      const n8nWebhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
+      
+      if (!n8nWebhookUrl) {
+        throw new Error('n8n webhook URL not configured. Please set VITE_N8N_WEBHOOK_URL in your .env file');
+      }
+
+      // Send to n8n webhook
+      const response = await fetch(n8nWebhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          csv: csvContent,
+          metadata: {
+            totalKits: filteredKits.length,
+            exportDate: new Date().toISOString(),
+            filters: {
+              brand: selectedBrand,
+              platform: selectedPlatforms,
+              status: selectedStatus,
+              imageFilter: imageFilter
+            }
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`n8n webhook failed: ${response.status} ${response.statusText}`);
+      }
+
+      toast({
+        title: "Workflow triggered! ✅",
+        description: `Sent ${filteredKits.length} content kits to n8n`,
+      });
+    } catch (error: any) {
+      console.error('n8n trigger error:', error);
+      toast({
+        title: "Failed to trigger workflow",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingN8n(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft': return 'bg-gray-500';
@@ -397,10 +480,30 @@ const ContentLibrary = () => {
               {/* Export */}
               <div className="space-y-2 lg:col-start-4">
                 <Label>Actions</Label>
-                <Button onClick={exportToCSV} variant="outline" className="w-full">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export to CSV
-                </Button>
+                <div className="space-y-2">
+                  <Button onClick={exportToCSV} variant="outline" className="w-full">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export to CSV
+                  </Button>
+                  <Button
+                    onClick={triggerN8nWorkflow}
+                    variant="default"
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                    disabled={filteredKits.length === 0 || isLoadingN8n}
+                  >
+                    {isLoadingN8n ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Trigger n8n Workflow
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
 
