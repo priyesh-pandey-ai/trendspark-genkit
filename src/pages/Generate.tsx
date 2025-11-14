@@ -10,6 +10,7 @@ import { ArrowLeft, Sparkles, Copy, Download, Library, RefreshCw } from "lucide-
 import { useToast } from "@/hooks/use-toast";
 import ErrorModal from "@/components/ErrorModal";
 import PostPreview from "@/components/PostPreview";
+import ModelSelector from "@/components/ModelSelector";
 import { isRateLimitError, normalizeError, formatErrorDisplay } from "@/lib/errorHandler";
 
 interface Brand {
@@ -36,6 +37,7 @@ const Generate = () => {
   
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string>(location.state?.brandId || "");
+  const [selectedModel, setSelectedModel] = useState("gemini-2.0-flash-exp");
   const [trendTitle, setTrendTitle] = useState(location.state?.trendTitle || "");
   const [platforms, setPlatforms] = useState<string[]>(["Instagram", "LinkedIn", "Twitter"]);
   const [loading, setLoading] = useState(false);
@@ -144,7 +146,8 @@ const Generate = () => {
           voiceCard: brand.voice_card,
           trendTitle: sanitizedTrendTitle,
           platforms,
-          niche: brand.niche
+          niche: brand.niche,
+          modelId: selectedModel
         }
       });
 
@@ -403,6 +406,14 @@ const Generate = () => {
                   value={trendTitle}
                   onChange={(e) => setTrendTitle(e.target.value)}
                   className="bg-background"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <ModelSelector
+                  value={selectedModel}
+                  onChange={setSelectedModel}
+                  showDetails={false}
                 />
               </div>
 
