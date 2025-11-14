@@ -80,7 +80,7 @@ Example structure:
       // Try to fix common issues: unescaped quotes, newlines in strings
       try {
         // Remove any trailing commas before closing brackets
-        let cleaned = content.replace(/,(\s*[}\]])/g, '$1');
+        const cleaned = content.replace(/,(\s*[}\]])/g, '$1');
         
         // Try parsing again
         contentKits = JSON.parse(cleaned);
