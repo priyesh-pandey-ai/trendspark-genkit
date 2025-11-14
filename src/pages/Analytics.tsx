@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, BarChart3, TrendingUp, Calendar, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ErrorModal from "@/components/ErrorModal";
 import {
   LineChart,
   Line,
@@ -21,6 +22,7 @@ import {
   Cell
 } from 'recharts';
 import { format, subDays, startOfDay } from 'date-fns';
+import { isRateLimitError, normalizeError, formatErrorDisplay } from "@/lib/errorHandler";
 
 interface Brand {
   id: string;
@@ -56,6 +58,8 @@ const Analytics = () => {
   const [dateRange, setDateRange] = useState<string>("30");
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; description: string; details?: string; isRateLimit: boolean; showRetry: boolean } | null>(null);
+  const [retryFunction, setRetryFunction] = useState<(() => void) | null>(null);
 
   useEffect(() => {
     fetchBrandAndAnalytics();
@@ -93,14 +97,30 @@ const Analytics = () => {
       // Process analytics data
       const processedData = processAnalytics(kitsData || []);
       setAnalytics(processedData);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      toast({
-        title: "Error loading analytics",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      navigate('/dashboard');
+    } catch (error: any) {
+      // Check for rate limit error
+      const isRateLimit = isRateLimitError(error) || error?.status === 429;
+      
+      // Show error modal for rate limit errors
+      if (isRateLimit) {
+        const displayError = formatErrorDisplay(normalizeError(error));
+        setErrorModal({
+          isOpen: true,
+          title: displayError.title,
+          description: displayError.description,
+          details: displayError.details,
+          isRateLimit: true,
+          showRetry: true,
+        });
+        setRetryFunction(() => fetchBrandAndAnalytics);
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+        toast({
+          title: "Error loading analytics",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }

@@ -15,10 +15,12 @@ import {
 } from "@/components/ui/select";
 import { TrendingUp, Flame, RefreshCw, Sparkles, LogOut, Zap, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ErrorModal from "@/components/ErrorModal";
 import { generateMockTrends, type Trend } from "@/lib/mockTrends";
 import { TREND_CATEGORIES, type TrendCategoryKey } from "@/lib/redditApi";
 import { triggerTrendDiscovery } from "@/lib/trendDiscovery";
 import { rankTrendsByBrandFit } from "@/lib/trendMatching";
+import { isRateLimitError, normalizeError, formatErrorDisplay } from "@/lib/errorHandler";
 
 interface Brand {
   id: string;
@@ -44,6 +46,8 @@ const DiscoverTrends = () => {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string>("");
   const [loadingBrands, setLoadingBrands] = useState(false);
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; description: string; details?: string; isRateLimit: boolean; showRetry: boolean } | null>(null);
+  const [retryFunction, setRetryFunction] = useState<(() => void) | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -175,13 +179,31 @@ const DiscoverTrends = () => {
       }
     } catch (error: any) {
       console.error("Error fetching trends:", error);
-      // Fallback to mock data on error
-      const mockTrends = generateMockTrends();
-      setTrends(mockTrends);
-      toast({
-        title: "Using demo data",
-        description: "Error loading trends. Click 'Discover New Trends' to try again.",
-      });
+      
+      // Check for rate limit error
+      const isRateLimit = isRateLimitError(error) || error?.status === 429;
+      
+      // Show error modal for rate limit errors
+      if (isRateLimit) {
+        const displayError = formatErrorDisplay(normalizeError(error));
+        setErrorModal({
+          isOpen: true,
+          title: displayError.title,
+          description: displayError.description,
+          details: displayError.details,
+          isRateLimit: true,
+          showRetry: true,
+        });
+        setRetryFunction(() => fetchTrends);
+      } else {
+        // Fallback to mock data on other errors
+        const mockTrends = generateMockTrends();
+        setTrends(mockTrends);
+        toast({
+          title: "Using demo data",
+          description: "Error loading trends. Click 'Discover New Trends' to try again.",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -241,13 +263,31 @@ const DiscoverTrends = () => {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error discovering trends:', error);
-      toast({
-        title: "Error discovering trends",
-        description: "Failed to fetch new trends. Please try again later.",
-        variant: "destructive",
-      });
+      
+      // Check for rate limit error
+      const isRateLimit = isRateLimitError(error) || error?.status === 429;
+      
+      // Show error modal for rate limit errors
+      if (isRateLimit) {
+        const displayError = formatErrorDisplay(normalizeError(error));
+        setErrorModal({
+          isOpen: true,
+          title: displayError.title,
+          description: displayError.description,
+          details: displayError.details,
+          isRateLimit: true,
+          showRetry: true,
+        });
+        setRetryFunction(() => handleDiscoverNewTrends);
+      } else {
+        toast({
+          title: "Error discovering trends",
+          description: "Failed to fetch new trends. Please try again later.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setDiscovering(false);
     }
@@ -600,6 +640,24 @@ const DiscoverTrends = () => {
           </div>
         )}
       </main>
+
+      {/* Error Modal */}
+      {errorModal && (
+        <ErrorModal
+          isOpen={errorModal.isOpen}
+          title={errorModal.title}
+          description={errorModal.description}
+          errorDetails={errorModal.details}
+          isRateLimit={errorModal.isRateLimit}
+          onClose={() => setErrorModal(null)}
+          onRetry={retryFunction ? () => {
+            setErrorModal(null);
+            retryFunction();
+          } : undefined}
+          showRetry={errorModal.showRetry}
+          retryLabel="Try Again"
+        />
+      )}
     </div>
   );
 };
