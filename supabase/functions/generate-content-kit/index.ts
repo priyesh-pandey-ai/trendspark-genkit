@@ -11,14 +11,9 @@ serve(async (req) => {
   }
 
   try {
-    const { voiceCard, trendTitle, platforms, niche } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    const { voiceCard, trendTitle, platforms, niche, modelId = 'gemini-1.5-flash' } = await req.json();
 
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY is not configured');
-    }
-
-    console.log('Generating content kit for trend:', trendTitle);
+    console.log('Generating content kit for trend:', trendTitle, 'using model:', modelId);
 
     const prompt = `Using the Voice Card below and the Trend topic, create ${platforms.length} UNIQUE platform-specific posts.
 
@@ -54,77 +49,16 @@ Example structure:
   {"platform": "LinkedIn", "hook": "...", "body": "...", "cta": "...", "hashtags": [...]}
 ]`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topP: 0.95,
-          topK: 40,
-          maxOutputTokens: 4096,
-          responseMimeType: "application/json"
-        }
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error('Gemini API error');
-    }
-
-    const data = await response.json();
+    // Route to appropriate model provider
+    let content: string;
     
-    console.log('Full Gemini API response:', JSON.stringify(data, null, 2));
-    
-    // Validate Gemini response structure
-    if (!data.candidates || !data.candidates.length) {
-      console.error('Invalid Gemini response structure - no candidates array');
-      
-      // Check for safety filters or other blocking
-      if (data.promptFeedback) {
-        console.error('Prompt feedback:', JSON.stringify(data.promptFeedback));
-        throw new Error(`Content was blocked by safety filters: ${JSON.stringify(data.promptFeedback.blockReason || 'Unknown reason')}`);
-      }
-      
-      throw new Error('Gemini returned an empty response. The content may have been filtered. Please try a different trend topic.');
+    if (modelId.includes('llama') || modelId.includes('mixtral')) {
+      content = await generateWithGroq(modelId, prompt);
+    } else {
+      content = await generateWithGemini(modelId, prompt);
     }
     
-    if (!data.candidates[0].content?.parts?.[0]?.text) {
-      console.error('Missing text in Gemini response:', JSON.stringify(data.candidates[0]));
-      
-      // Check finish reason
-      const finishReason = data.candidates[0].finishReason;
-      if (finishReason === 'MAX_TOKENS') {
-        throw new Error('Response was too long and got cut off. This usually means the voice card is very detailed. Please try again or use a more concise voice card.');
-      }
-      
-      if (finishReason && finishReason !== 'STOP') {
-        throw new Error(`Content generation stopped: ${finishReason}. Please try a different trend topic.`);
-      }
-      
-      throw new Error('Gemini response missing content. Please try again.');
-    }
-    
-    let content = data.candidates[0].content.parts[0].text;
-    
-    console.log('Raw Gemini response (first 500 chars):', content.substring(0, 500));
+    console.log('Raw AI response (first 500 chars):', content.substring(0, 500));
     
     // Extract JSON from markdown code blocks if present
     const jsonMatch = content.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
@@ -172,3 +106,200 @@ Example structure:
     );
   }
 });
+
+/**
+ * Generate content kit using Google Gemini API
+ */
+async function generateWithGemini(modelId: string, prompt: string): Promise<string> {
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY is not configured. Get a free key at https://ai.google.dev');
+  }
+
+  const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+  let response: Response | null = null;
+  let attempt = 0;
+  const maxAttempts = 3;
+  let lastErrorText = "";
+
+  const requestBody = JSON.stringify({
+    contents: [{
+      parts: [{
+        text: prompt
+      }]
+    }],
+    generationConfig: {
+      temperature: 0.7,
+      topP: 0.95,
+      topK: 40,
+      maxOutputTokens: 4096,
+      responseMimeType: "application/json"
+    }
+  });
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+      });
+
+      if (response.ok) {
+        break;
+      }
+
+      lastErrorText = await response.text();
+      console.error(`Gemini API error (attempt ${attempt}):`, response.status, lastErrorText);
+
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
+      }
+
+      if (response.status >= 500 && attempt < maxAttempts) {
+        const backoffMs = 500 * Math.pow(2, attempt - 1);
+        console.warn(`Retrying Gemini request in ${backoffMs}ms (attempt ${attempt + 1}/${maxAttempts})`);
+        await sleep(backoffMs);
+        continue;
+      }
+
+      throw new Error(`Gemini API error: ${response.status}`);
+    } catch (err) {
+      console.error(`Gemini request failed on attempt ${attempt}:`, err);
+      if (attempt < maxAttempts) {
+        const backoffMs = 500 * Math.pow(2, attempt - 1);
+        await sleep(backoffMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!response) {
+    throw new Error('No response received from Gemini API');
+  }
+
+  const data = await response.json();
+  
+  // Validate Gemini response structure
+  if (!data.candidates || !data.candidates.length) {
+    console.error('Invalid Gemini response structure - no candidates array');
+    
+    // Check for safety filters or other blocking
+    if (data.promptFeedback) {
+      console.error('Prompt feedback:', JSON.stringify(data.promptFeedback));
+      throw new Error(`Content was blocked by safety filters: ${JSON.stringify(data.promptFeedback.blockReason || 'Unknown reason')}`);
+    }
+    
+    throw new Error('Gemini returned an empty response. The content may have been filtered. Please try a different trend topic.');
+  }
+  
+  if (!data.candidates[0].content?.parts?.[0]?.text) {
+    console.error('Missing text in Gemini response:', JSON.stringify(data.candidates[0]));
+    
+    // Check finish reason
+    const finishReason = data.candidates[0].finishReason;
+    if (finishReason === 'MAX_TOKENS') {
+      throw new Error('Response was too long and got cut off. This usually means the voice card is very detailed. Please try again or use a more concise voice card.');
+    }
+    
+    if (finishReason && finishReason !== 'STOP') {
+      throw new Error(`Content generation stopped: ${finishReason}. Please try a different trend topic.`);
+    }
+    
+    throw new Error('Gemini response missing content. Please try again.');
+  }
+
+  return data.candidates[0].content.parts[0].text;
+}
+
+/**
+ * Generate content kit using Groq API (Llama/Mixtral)
+ */
+async function generateWithGroq(modelId: string, prompt: string): Promise<string> {
+  const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
+
+  if (!GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY is not configured. Get a free key at https://console.groq.com');
+  }
+
+  const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+  let response: Response | null = null;
+  let attempt = 0;
+  const maxAttempts = 3;
+
+  const requestBody = JSON.stringify({
+    model: modelId,
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a content generation expert. Create platform-specific social media posts that are unique and optimized for each platform. Always return valid JSON format.'
+      },
+      {
+        role: 'user',
+        content: prompt
+      }
+    ],
+    temperature: 0.7,
+    max_tokens: 4096,
+    response_format: { type: "json_object" }
+  });
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+      });
+
+      if (response.ok) {
+        break;
+      }
+
+      const errorText = await response.text();
+      console.error(`Groq API error (attempt ${attempt}):`, response.status, errorText);
+
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
+      }
+
+      if (response.status >= 500 && attempt < maxAttempts) {
+        const backoffMs = 500 * Math.pow(2, attempt - 1);
+        console.warn(`Retrying Groq request in ${backoffMs}ms (attempt ${attempt + 1}/${maxAttempts})`);
+        await sleep(backoffMs);
+        continue;
+      }
+
+      throw new Error(`Groq API error: ${response.status}`);
+    } catch (err) {
+      console.error(`Groq request failed on attempt ${attempt}:`, err);
+      if (attempt < maxAttempts) {
+        const backoffMs = 500 * Math.pow(2, attempt - 1);
+        await sleep(backoffMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!response) {
+    throw new Error('No response received from Groq API');
+  }
+
+  const data = await response.json();
+
+  if (!data.choices || data.choices.length === 0) {
+    throw new Error('No response from Groq API');
+  }
+
+  return data.choices[0].message.content;
+}

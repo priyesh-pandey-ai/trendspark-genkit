@@ -49,8 +49,9 @@ serve(async (req) => {
     // Encode the prompt for URL
     const encodedPrompt = encodeURIComponent(imagePrompt);
     
-    // Pollinations.AI URL with dimensions
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${dimensions.width}&height=${dimensions.height}&nologo=true&enhance=true`;
+    // Pollinations.AI URL with dimensions and model
+    // Using 'flux' model for better quality image generation
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${dimensions.width}&height=${dimensions.height}&nologo=true&model=flux`;
 
     console.log('Image URL generated:', imageUrl);
 
